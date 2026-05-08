@@ -1,0 +1,6 @@
+{
+  "name": "@galley/media-tools-domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Voices, QC, cover workflows, clips"
+}

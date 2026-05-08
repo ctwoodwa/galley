@@ -1,0 +1,6 @@
+{
+  "name": "@galley/production-domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Render jobs, queue state, progress"
+}

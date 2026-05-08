@@ -1,0 +1,35 @@
+{
+  "books": [
+    {
+      "id": "the-inverted-stack",
+      "title": "The Inverted Stack",
+      "bookRoot": "/Users/christopherwood/Projects/SunfishSoftware/the-inverted-stack",
+      "volumes": [
+        {
+          "id": "vol-1",
+          "label": "Vol 1",
+          "sections": [
+            { "dir": "front-matter",                    "label": "Front Matter",            "group": "front-matter" },
+            { "dir": "part-1-thesis-and-pain",          "label": "Part 1 — Thesis & Pain",  "group": "part-1" },
+            { "dir": "part-2-council-reads-the-paper",  "label": "Part 2 — Council Review", "group": "part-2" },
+            { "dir": "part-3-reference-architecture",   "label": "Part 3 — Reference Arch", "group": "part-3" },
+            { "dir": "part-4-implementation-playbooks", "label": "Part 4 — Playbooks",      "group": "part-4" },
+            { "dir": "part-5-operational-concerns",     "label": "Part 5 — Operations",     "group": "part-5" },
+            { "dir": "closing",                         "label": "Closing",                 "group": "closing" },
+            { "dir": "epilogue",                        "label": "Epilogue",                "group": "epilogue" },
+            { "dir": "appendices",                      "label": "Appendices",              "group": "appendices" }
+          ]
+        },
+        {
+          "id": "vol-2",
+          "label": "Vol 2",
+          "sections": [
+            { "dir": "book-2/act-1", "label": "Act 1 — Sealed Hull", "group": "act-1" },
+            { "dir": "book-2/act-2", "label": "Act 2 — Under Ice",   "group": "act-2" },
+            { "dir": "book-2/act-3", "label": "Act 3 — Ascent",      "group": "act-3" }
+          ]
+        }
+      ]
+    }
+  ]
+}

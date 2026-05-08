@@ -1,0 +1,11 @@
+{
+  "name": "galley",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev --filter=@galley/web --filter=@galley/book-server",
+    "build": "turbo build"
+  },
+  "devDependencies": {
+    "turbo": "latest"
+  }
+}

@@ -1,0 +1,4 @@
+[project]
+name = "galley-python-workers"
+version = "0.1.0"
+description = "Python TTS/STT/image/music workers"

@@ -1,0 +1,6 @@
+{
+  "name": "@galley/editorial-domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Comments, flags, notes, questions"
+}

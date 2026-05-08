@@ -1,0 +1,6 @@
+{
+  "name": "@galley/reader-domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Volumes, chapters, reading position"
+}
