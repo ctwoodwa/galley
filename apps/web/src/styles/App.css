@@ -283,6 +283,29 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   flex-wrap: wrap;
 }
 
+/* ── Phase D toast (R = repeat, B = bookmark confirmation) ─────────────── */
+.phase-d-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  animation: phaseDToastIn 150ms ease-out;
+  pointer-events: none;
+}
+@keyframes phaseDToastIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0);    }
+}
+
 /* ── Sentence navigation row (under AudioPlayer in sticky-player-bar) ────── */
 .sentence-nav-row {
   display: flex;

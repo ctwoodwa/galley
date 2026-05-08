@@ -501,11 +501,25 @@ export default function ChapterView({
             playerRef.current?.changeVolume(-0.1)
           }
           break
+        case 'r':
+        case 'R':
+          if (alignedChunks) {
+            e.preventDefault()
+            repeatCurrentSentence()
+          }
+          break
+        case 'b':
+        case 'B':
+          if (alignedChunks) {
+            e.preventDefault()
+            markForReview()
+          }
+          break
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [alignedChunks, seekRelativeSentence, seekRelativeParagraph, repeatCurrentSentence, markForReview])
 
   // ── Chunk map + sentence-click data attributes ────────────────────────
 
@@ -530,6 +544,18 @@ export default function ChapterView({
       el.dataset.firstChunkStart = String(info.starts[0])
     }
   }, [alignedChunks, content, loading])
+
+  // ── Phase D: repeat-current-sentence + bookmark ───────────────────────
+
+  // Brief on-screen confirmation toast (used by B = bookmark + R = repeat).
+  const [phaseDToast, setPhaseDToast] = useState(null)
+  const phaseDToastTimerRef = useRef(null)
+  const showPhaseDToast = useCallback((message) => {
+    setPhaseDToast(message)
+    clearTimeout(phaseDToastTimerRef.current)
+    phaseDToastTimerRef.current = setTimeout(() => setPhaseDToast(null), 1800)
+  }, [])
+  useEffect(() => () => clearTimeout(phaseDToastTimerRef.current), [])
 
   // ── Phase C: sentence-aware seek helpers ──────────────────────────────
 
@@ -566,6 +592,64 @@ export default function ChapterView({
     if (idx >= map.length) idx = map.length - 1
     audio.currentTime = map[idx].start_seconds
   }, [findCurrentChunkIdx])
+
+  // R = repeat current sentence (seek to start of current chunk and play).
+  // If the current chunk is already at its start (within 0.5s), step back one
+  // non-pause chunk first — supports tapping R repeatedly to scrub back.
+  const repeatCurrentSentence = useCallback(() => {
+    const map = chunkMapRef.current
+    if (!map.length) return
+    const audio = playerRef.current?.audio?.()
+    if (!audio) return
+    let idx = findCurrentChunkIdx()
+    if (idx < 0) return
+    const cur = map[idx]
+    const atStart = audio.currentTime - cur.start_seconds < 0.5
+    if (atStart) {
+      // Step back to previous non-pause chunk.
+      let prev = idx - 1
+      while (prev >= 0 && map[prev].is_pause) prev -= 1
+      if (prev >= 0) idx = prev
+    }
+    audio.currentTime = map[idx].start_seconds
+    if (audio.paused) void audio.play().catch(() => {})
+  }, [findCurrentChunkIdx])
+
+  // B = mark for review — POST a "note" comment on the current sentence with
+  // a bookmark default body. Uses the existing /api/books/:bookId/review/comment
+  // surface so the bookmark shows up in the Review panel; user can later edit
+  // the text or change the type. Per the audio-editor spec: flags are
+  // short-bodied comments under the hood.
+  const markForReview = useCallback(async () => {
+    const map = chunkMapRef.current
+    if (!map.length) {
+      showPhaseDToast('No alignment yet — open a chapter with audio')
+      return
+    }
+    const idx = findCurrentChunkIdx()
+    if (idx < 0) return
+    const cur = map[idx]
+    const excerpt = (cur.source_text || cur.text || '').trim()
+    try {
+      const r = await fetch(`/api/books/${bookId}/review/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapter_id: chapter.id,
+          chapter_title: chapter.title,
+          chapter_slug: chapter.slug,
+          excerpt: excerpt.slice(0, 300),
+          comment: '🔖 Bookmark — review this',
+          type: 'note',
+        }),
+      })
+      if (!r.ok) throw new Error('Failed to bookmark')
+      showPhaseDToast(`🔖 Bookmarked sentence ${idx + 1}`)
+      if (onCommentAdded) onCommentAdded()
+    } catch (err) {
+      showPhaseDToast(`Bookmark failed: ${err.message}`)
+    }
+  }, [bookId, chapter.id, chapter.title, chapter.slug, findCurrentChunkIdx, onCommentAdded, showPhaseDToast])
 
   const seekRelativeParagraph = useCallback((delta) => {
     const map = chunkMapRef.current
@@ -853,6 +937,8 @@ export default function ChapterView({
             <>
               <span><kbd>←</kbd><kbd>→</kbd> ±1 sentence</span>
               <span><kbd>Shift</kbd>+<kbd>←→</kbd> ±1 paragraph</span>
+              <span><kbd>R</kbd> repeat sentence</span>
+              <span><kbd>B</kbd> bookmark</span>
             </>
           ) : (
             <>
@@ -960,6 +1046,13 @@ export default function ChapterView({
         chapterSlug={chapter.slug}
         onCommentAdded={onCommentAdded}
       />
+
+      {/* Phase D toast — confirms R/B keyboard actions */}
+      {phaseDToast && (
+        <div className="phase-d-toast" role="status" aria-live="polite">
+          {phaseDToast}
+        </div>
+      )}
     </div>
   )
 }
