@@ -518,6 +518,10 @@ function processNextInQueue() {
       if (queueHistory.length > QUEUE_HISTORY_MAX) queueHistory.pop()
       batchDone++
       activeQueueItem = null
+      // Last item just landed — clear the batch so the progress footer
+      // hides. (`batch:` in serializeQueue is gated on batchTotal > 0.)
+      // Without this the footer shows "Rendering N/N" forever.
+      if (jobQueue.length === 0) { batchTotal = 0; batchDone = 0 }
       broadcast('queue-updated', serializeQueue())
       processNextInQueue()
     })
@@ -530,7 +534,9 @@ function processNextInQueue() {
     item.error = e.message
     item.finished_at = new Date().toISOString()
     queueHistory.unshift({ ...item })
+    batchDone++
     activeQueueItem = null
+    if (jobQueue.length === 0) { batchTotal = 0; batchDone = 0 }
     broadcast('queue-updated', serializeQueue())
     processNextInQueue()
   }
