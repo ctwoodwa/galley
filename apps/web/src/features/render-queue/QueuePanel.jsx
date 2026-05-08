@@ -10,7 +10,7 @@ const PANEL_MAX = 720
 const PANEL_DEFAULT = 420
 const PANEL_WIDTH_KEY = 'queue-panel-width'
 
-export default function QueuePanel({ chapters, queue, onClose, inline = false }) {
+export default function QueuePanel({ chapters, queue, onClose, inline = false, prefillChapterId = null, prefillTick = 0 }) {
   // Render-config comes from the user's voice templates. Queue supports
   // staging the SAME chapters under any one of the user's templates (e.g.
   // try ch01 with three different voices). Pick a specific template here;
@@ -33,6 +33,25 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
   const [selectedChapters, setSelectedChapters] = useState(new Set())
   const [chapterFilter, setChapterFilter] = useState('all')
   const [volumeTab, setVolumeTab] = useState('vol-1')
+
+  // When the +queue button on the audio player fires, AppLayout passes the
+  // active chapter id and bumps prefillTick. We jump to that chapter's
+  // volume tab and pre-check the row so the user can hit Stage Selected
+  // immediately. prefillTick (not chapterId) is the dep so re-clicking
+  // the same chapter still re-fires the effect.
+  useEffect(() => {
+    if (!prefillChapterId) return
+    const ch = chapters.find((c) => c.id === prefillChapterId)
+    if (!ch) return
+    if (ch.volume) setVolumeTab(ch.volume)
+    setSelectedChapters((prev) => {
+      if (prev.has(prefillChapterId)) return prev
+      const next = new Set(prev)
+      next.add(prefillChapterId)
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillTick])
 
   const template = templates.find((t) => t.id === selectedTemplateId) ?? forTier('quality')
 

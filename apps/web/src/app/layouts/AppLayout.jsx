@@ -166,6 +166,18 @@ export default function AppLayout() {
   // Unique volume ids from this book's chapters
   const volumeIds = [...new Set(chapters.map(c => c.volume))].sort()
 
+  // When the +queue button in the player is clicked, jump to the queue
+  // drawer AND prefill the volume tab + selected-chapter set with the
+  // currently-active chapter, so the user sees the row already checked
+  // and just hits "Stage Selected" rather than re-finding their chapter.
+  // Tick increments on each click so re-clicking the same chapter still
+  // re-fires the prefill effect inside QueuePanel.
+  const [queuePrefill, setQueuePrefill] = useState({ chapterId: null, tick: 0 })
+  const triggerOpenQueue = (chapterId) => {
+    setQueuePrefill((p) => ({ chapterId: chapterId ?? null, tick: p.tick + 1 }))
+    setActivePanel('queue')
+  }
+
   const outletContext = {
     bookId, chapters, selected, volume, loading,
     queue, queueBusy, refreshChapters,
@@ -173,7 +185,7 @@ export default function AppLayout() {
     savedChapterState, saveReaderState,
     onCommentAdded: fetchReviewSession,
     onAudioGenerated: refreshChapters,
-    onAddToQueue: () => setActivePanel('queue'),
+    onAddToQueue: triggerOpenQueue,
     onReaderStateChange: saveReaderState,
   }
 
@@ -251,6 +263,8 @@ export default function AppLayout() {
               chapters={chapters}
               queue={queue}
               onClose={closePanel}
+              prefillChapterId={queuePrefill.chapterId}
+              prefillTick={queuePrefill.tick}
             />
           )}
           {activePanel === 'logs' && (
