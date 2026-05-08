@@ -36,6 +36,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default function InferenceLayout() {
   const { status } = useHealth()
   const baseUrl = useApiConfig((s) => s.baseUrl)
+  const ttsSource = useApiConfig((s) => s.ttsSource)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
@@ -64,6 +65,14 @@ export default function InferenceLayout() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="text-xs text-text-dim hover:text-text px-2 py-0.5 rounded border border-sidebar-border transition-colors"
+            title="Click to switch source in Settings"
+          >
+            TTS: <span className="text-text">{ttsSource === 'kokoro-local' ? 'Local Kokoro' : 'Remote GPU'}</span>
+          </button>
           <div
             className="flex items-center gap-1.5 text-xs text-text-dim"
             title={`Health: ${STATUS_LABEL[status]} · ${baseUrl}`}

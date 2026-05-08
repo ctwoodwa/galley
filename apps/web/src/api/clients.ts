@@ -10,7 +10,15 @@ import { useApiConfig } from './config'
 export function useTTSClient() {
   const baseUrl = useApiConfig((s) => s.baseUrl)
   const apiKey = useApiConfig((s) => s.apiKey)
-  return useMemo(() => new TTSClient(baseUrl, apiKey), [baseUrl, apiKey])
+  const ttsSource = useApiConfig((s) => s.ttsSource)
+  const kokoroLocalUrl = useApiConfig((s) => s.kokoroLocalUrl)
+
+  return useMemo(() => {
+    if (ttsSource === 'kokoro-local') {
+      return new TTSClient(kokoroLocalUrl, '', 'kokoro-local')
+    }
+    return new TTSClient(baseUrl, apiKey, 'standard')
+  }, [ttsSource, baseUrl, apiKey, kokoroLocalUrl])
 }
 
 export function useImageClient() {

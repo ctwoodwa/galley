@@ -15,8 +15,12 @@ interface SettingsDrawerProps {
  * via BaseUrlSchema (Zod); error shown inline.
  */
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
-  const { baseUrl, apiKey, setBaseUrl, setApiKey, reset } = useApiConfig()
+  const {
+    baseUrl, apiKey, ttsSource, kokoroLocalUrl,
+    setBaseUrl, setApiKey, setTtsSource, setKokoroLocalUrl, reset,
+  } = useApiConfig()
   const [baseUrlError, setBaseUrlError] = useState<string | null>(null)
+  const [kokoroUrlError, setKokoroUrlError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -31,6 +35,12 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     setBaseUrl(val)
     const result = BaseUrlSchema.safeParse(val)
     setBaseUrlError(result.success ? null : (result.error.issues[0]?.message ?? 'Invalid URL'))
+  }
+
+  const handleKokoroUrlChange = (val: string) => {
+    setKokoroLocalUrl(val)
+    const result = BaseUrlSchema.safeParse(val)
+    setKokoroUrlError(result.success ? null : (result.error.issues[0]?.message ?? 'Invalid URL'))
   }
 
   if (!open) return null
@@ -95,6 +105,68 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               Sent as <code className="text-text-dim">Authorization: Bearer …</code> on protected endpoints.
             </span>
           </label>
+
+          <fieldset className="pt-4 border-t border-sidebar-border flex flex-col gap-2">
+            <legend className="text-xs font-semibold tracking-wider uppercase text-text-dim mb-1">
+              TTS source
+            </legend>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="tts-source"
+                value="remote"
+                checked={ttsSource === 'remote'}
+                onChange={() => setTtsSource('remote')}
+                className="mt-0.5 accent-accent"
+              />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm text-text">Remote GPU API</span>
+                <span className="text-xs text-text-muted">
+                  Higgs + Kokoro voices via the Bearer-protected server above. Full voice library + uploads.
+                </span>
+              </div>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="tts-source"
+                value="kokoro-local"
+                checked={ttsSource === 'kokoro-local'}
+                onChange={() => setTtsSource('kokoro-local')}
+                className="mt-0.5 accent-accent"
+              />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm text-text">Local Kokoro Docker</span>
+                <span className="text-xs text-text-muted">
+                  Backup / offline path. Stock voices only; no upload or delete. No API key needed.
+                </span>
+              </div>
+            </label>
+          </fieldset>
+
+          {ttsSource === 'kokoro-local' && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-text-dim">Local Kokoro URL</span>
+              <input
+                type="text"
+                value={kokoroLocalUrl}
+                onChange={(e) => handleKokoroUrlChange(e.target.value)}
+                placeholder="http://localhost:8880"
+                aria-invalid={kokoroUrlError ? 'true' : 'false'}
+                className={`bg-bg border rounded px-3 py-2 text-sm text-text font-mono focus:outline-none focus:border-accent ${
+                  kokoroUrlError ? 'border-danger' : 'border-sidebar-border'
+                }`}
+              />
+              {kokoroUrlError ? (
+                <span className="text-xs text-danger">{kokoroUrlError}</span>
+              ) : (
+                <span className="text-xs text-text-muted">
+                  kokoro-fastapi Docker default. Override if running on a different host/port.
+                </span>
+              )}
+            </label>
+          )}
+
           <div className="pt-3 border-t border-sidebar-border">
             <Button variant="secondary" size="sm" onClick={reset}>
               Reset to defaults
