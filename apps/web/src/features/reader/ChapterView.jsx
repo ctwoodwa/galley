@@ -232,8 +232,16 @@ function wrapWords(element) {
     }
   }
 
-  if (hasChildElements) {
-    // Mixed content — wrap only top-level text nodes, leave child elements in place
+  // Pre-compute sentence count from the full text-content (the inline-element
+  // case below wants to know "is this a multi-sentence paragraph?" before
+  // walking nodes, since single-sentence paragraphs skip the tts-sent
+  // grouping altogether).
+  const fullText = childNodes.map((n) => n.textContent).join('')
+  const sentenceCount = splitSentences(fullText).length
+
+  if (hasChildElements && sentenceCount <= 1) {
+    // Mixed content, single sentence — wrap the text nodes for word
+    // highlighting; no sentence grouping needed.
     for (const node of childNodes) {
       if (node.nodeType === Node.TEXT_NODE) {
         appendWordSpans(element, node.textContent, allWordSpans)
@@ -241,25 +249,66 @@ function wrapWords(element) {
         element.appendChild(node)
       }
     }
-  } else {
-    // Pure text — split into sentences, wrap each in a sentence span
-    const fullText = childNodes.map(n => n.textContent).join('')
-    const sentences = splitSentences(fullText)
-
-    if (sentences.length <= 1) {
-      // Single sentence: just word spans, no sentence grouping
-      appendWordSpans(element, fullText, allWordSpans)
-    } else {
-      sentences.forEach((sentence, sIdx) => {
-        const sentEl = document.createElement('span')
-        sentEl.className = 'tts-sent'
-        const wordSpans = []
-        appendWordSpans(sentEl, sentence, wordSpans)
-        if (sIdx < sentences.length - 1) sentEl.appendChild(document.createTextNode(' '))
-        sentenceGroups.push({ el: sentEl, wordSpans })
-        element.appendChild(sentEl)
-      })
+  } else if (hasChildElements) {
+    // Mixed content with multiple sentences (e.g. a paragraph that contains
+    // <em>) — walk child nodes left-to-right, splitting text-node content
+    // at sentence boundaries and tucking inline elements into whichever
+    // sentence they fall inside. Without this, paragraphs with any inline
+    // markup would lose sentence-level highlighting entirely (the original
+    // implementation only sentence-grouped pure-text paragraphs).
+    const SENT_RE = /(?<=[.!?…])(\s+)(?=[A-Z"'"“])/g
+    let sentEl = document.createElement('span')
+    sentEl.className = 'tts-sent'
+    let wordSpans = []
+    const flush = (addSpace) => {
+      if (addSpace) sentEl.appendChild(document.createTextNode(' '))
+      sentenceGroups.push({ el: sentEl, wordSpans })
+      element.appendChild(sentEl)
+      sentEl = document.createElement('span')
+      sentEl.className = 'tts-sent'
+      wordSpans = []
     }
+    for (const node of childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent
+        let lastIdx = 0
+        SENT_RE.lastIndex = 0
+        let m
+        while ((m = SENT_RE.exec(text))) {
+          const before = text.slice(lastIdx, m.index)
+          if (before) appendWordSpans(sentEl, before, wordSpans)
+          flush(true)
+          lastIdx = m.index + m[0].length
+        }
+        const tail = text.slice(lastIdx)
+        if (tail) appendWordSpans(sentEl, tail, wordSpans)
+      } else {
+        // Inline element (em / strong / a / etc.) — drop into the current
+        // sentence as-is. Sentence boundaries are unlikely to fall within
+        // an italic span; if they do, both halves stay in the same span,
+        // which degrades gracefully (sentence span is slightly larger).
+        sentEl.appendChild(node)
+      }
+    }
+    if (sentEl.childNodes.length) {
+      sentenceGroups.push({ el: sentEl, wordSpans })
+      element.appendChild(sentEl)
+    }
+  } else if (sentenceCount <= 1) {
+    // Pure text, single sentence — word spans only
+    appendWordSpans(element, fullText, allWordSpans)
+  } else {
+    // Pure text, multiple sentences — original sentence-grouping path
+    const sentences = splitSentences(fullText)
+    sentences.forEach((sentence, sIdx) => {
+      const sentEl = document.createElement('span')
+      sentEl.className = 'tts-sent'
+      const wordSpans = []
+      appendWordSpans(sentEl, sentence, wordSpans)
+      if (sIdx < sentences.length - 1) sentEl.appendChild(document.createTextNode(' '))
+      sentenceGroups.push({ el: sentEl, wordSpans })
+      element.appendChild(sentEl)
+    })
   }
 
   return { allWordSpans, sentenceGroups, originalHTML }
