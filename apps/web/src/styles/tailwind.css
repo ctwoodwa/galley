@@ -15,12 +15,29 @@
  * apps/web/src/components/inference/music/ keep their warm-tone palette.
  * The play button explicitly uses dark text on --mp-accent, so --mp-accent
  * must remain light/warm.
+ *
+ * Tiers explanation:
+ *   --mp-bg-1..3 — background depth (1=lowest/darkest, 3=highest/lightest)
+ *   --mp-fg-2..4 — text emphasis (2=secondary, 4=most muted)
+ *   --mp-line / --mp-line-2 — borders/dividers (2 = lighter)
  */
 :root {
-  --mp-bg: #14110d;
-  --mp-fg: #f3eee5;
+  /* Backgrounds */
+  --mp-bg:   #14110d;
+  --mp-bg-1: #1a1612;
+  --mp-bg-2: #221d18;
+  --mp-bg-3: #2a241e;
+  /* Foregrounds */
+  --mp-fg:   #f3eee5;
+  --mp-fg-2: #d6cfbf;
+  --mp-fg-3: #9c9182;
+  --mp-fg-4: #6b5d52;
+  /* Accent + state */
   --mp-accent: #d4a373;
-  --mp-line: #2a2520;
   --mp-danger: #f05252;
+  /* Lines */
+  --mp-line:   #2a2520;
+  --mp-line-2: #3a322a;
+  /* Waveform dim color */
   --mp-wave-dim: #6b5d52;
 }
