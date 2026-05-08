@@ -9,6 +9,7 @@ import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
 import { templateToRenderConfig } from '@/lib/voice-templates'
 import { useApiConfig } from '@/api/config'
 import { playStaleChime, isChimeEnabled, setChimeEnabled } from '@/lib/chime'
+import { useDictation } from '@/hooks/useDictation'
 
 function stripFrontmatter(md) {
   return md.replace(/^---\n[\s\S]*?\n---\n?/, '')
@@ -592,6 +593,15 @@ export default function ChapterView({
             h.markForReview()
           }
           break
+        case 'd':
+        case 'D':
+          if (h.alignedChunks && h.dict) {
+            e.preventDefault()
+            if (h.dict.isRecording) h.dict.stop()
+            else if (h.dict.isIdle) h.startDictationOnCurrentChunk?.()
+            // ignore while transcribing (in flight)
+          }
+          break
       }
     }
     document.addEventListener('keydown', onKey)
@@ -789,6 +799,8 @@ export default function ChapterView({
     seekRelativeParagraph,
     repeatCurrentSentence,
     markForReview,
+    dict,
+    startDictationOnCurrentChunk,
   }
 
   // ── Phase E: open inline edit on Alt+click of a sentence ──────────────
@@ -877,6 +889,72 @@ export default function ChapterView({
       setCommittingEdits(false)
     }
   }, [bookId, chapter.id, committingEdits, pendingEditCount, forTier, apiKey, showPhaseDToast])
+
+  // ── Phase G: dictate-to-comment while listening ────────────────────────
+  // Press D while audio is playing → audio pauses, mic starts recording.
+  // Press D again → recording stops and the transcription POSTs as a note
+  // comment attached to the sentence that was active when D was pressed.
+  // Capturing the chunk at start() keeps the comment anchored to what the
+  // listener heard, even if the audio drifts (or auto-resumes) before
+  // transcription returns.
+  const dictationTargetRef = useRef(null)  // {chunk_id, excerpt, wasPlaying}
+  const onDictationTranscribed = useCallback(async (text) => {
+    const target = dictationTargetRef.current
+    dictationTargetRef.current = null
+    const trimmed = (text || '').trim()
+    if (!trimmed) {
+      showPhaseDToast('Dictation: nothing transcribed')
+      if (target?.wasPlaying) playerRef.current?.togglePlay?.()
+      return
+    }
+    try {
+      const r = await fetch(`/api/books/${bookId}/review/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapter_id: chapter.id,
+          chapter_title: chapter.title,
+          chapter_slug: chapter.slug,
+          excerpt: (target?.excerpt || '').slice(0, 300),
+          comment: `🎙 ${trimmed}`,
+          type: 'note',
+        }),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      onCommentAdded?.()
+      showPhaseDToast(`🎙 Comment saved (${trimmed.length} char${trimmed.length === 1 ? '' : 's'})`)
+    } catch (err) {
+      showPhaseDToast(`Dictation save failed: ${err.message}`)
+    }
+    // Resume audio if it was playing when D was pressed.
+    if (target?.wasPlaying) playerRef.current?.togglePlay?.()
+  }, [bookId, chapter.id, chapter.title, chapter.slug, onCommentAdded, showPhaseDToast])
+
+  const dict = useDictation({
+    onTranscribe: onDictationTranscribed,
+    onError: (err) => showPhaseDToast(`Mic error: ${err.message || err}`),
+  })
+
+  const startDictationOnCurrentChunk = useCallback(() => {
+    const map = chunkMapRef.current
+    if (!map.length) {
+      showPhaseDToast('No alignment — open a chapter with audio')
+      return
+    }
+    const idx = findCurrentChunkIdx()
+    if (idx < 0) { showPhaseDToast('Position unclear — seek into the chapter first'); return }
+    const cur = map[idx]
+    const audio = playerRef.current?.audio?.()
+    const wasPlaying = audio && !audio.paused
+    if (wasPlaying) audio.pause()
+    dictationTargetRef.current = {
+      chunk_id: cur.chunk_id,
+      excerpt: (cur.source_text || cur.text || '').trim(),
+      wasPlaying,
+    }
+    dict.start()
+    showPhaseDToast(`🎙 Recording — press D again to stop`)
+  }, [dict, findCurrentChunkIdx, showPhaseDToast])
 
   // ── Phase B: click-to-localize on a sentence/paragraph ────────────────
 
@@ -1193,6 +1271,7 @@ export default function ChapterView({
               <span><kbd>Shift</kbd>+<kbd>←→</kbd> ±1 paragraph</span>
               <span><kbd>R</kbd> repeat sentence</span>
               <span><kbd>B</kbd> bookmark</span>
+              <span><kbd>D</kbd> dictate comment</span>
             </>
           ) : (
             <>
@@ -1218,6 +1297,11 @@ export default function ChapterView({
             >
               {chimeEnabled ? '🔔' : '🔕'} {staleChunkIds.size}
             </button>
+          )}
+          {(dict.isRecording || dict.isTranscribing) && (
+            <span className={`dictate-pill dictate-pill--${dict.state}`}>
+              {dict.isRecording ? `● rec ${dict.elapsed}s — D to stop` : '⟳ transcribing…'}
+            </span>
           )}
         </div>
       </div>

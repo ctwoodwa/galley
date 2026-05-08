@@ -1757,6 +1757,32 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   word-break: break-all;
 }
 
+/* ── Phase G dictation status pill (shown while recording/transcribing) ─ */
+.dictate-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+.dictate-pill--recording {
+  background: rgba(240, 82, 82, 0.18);
+  color: #f05252;
+  border: 1px solid #f05252;
+  animation: dictate-pulse 1.6s ease-in-out infinite;
+}
+.dictate-pill--transcribing {
+  background: var(--sidebar-bg, #eef0f3);
+  color: var(--text-dim);
+  border: 1px solid var(--sidebar-border);
+}
+@keyframes dictate-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
 /* ── Phase F stale-chunk chime toggle ───────────────────────────────── */
 .chime-toggle {
   background: transparent;
