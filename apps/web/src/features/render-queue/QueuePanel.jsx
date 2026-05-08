@@ -9,19 +9,30 @@ const PANEL_DEFAULT = 420
 const PANEL_WIDTH_KEY = 'queue-panel-width'
 
 export default function QueuePanel({ chapters, queue, onClose, inline = false }) {
-  // Render-config now comes from the user's voice template for the chosen tier.
-  // Per-form engine/preset/voice/speed/exaggeration/cfg/temperature inputs
-  // removed; user manages those at the topbar ⚙ → Voice Templates settings.
-  const { forTier, templates, defaults } = useVoiceTemplates()
-  const [tier, setTier] = useState('quality')
+  // Render-config comes from the user's voice templates. Queue supports
+  // staging the SAME chapters under any one of the user's templates (e.g.
+  // try ch01 with three different voices). Pick a specific template here;
+  // user manages templates at the topbar ⚙ → Voice Templates settings.
+  const { templates, defaults, forTier } = useVoiceTemplates()
+  const [selectedTemplateId, setSelectedTemplateId] = useState(() => defaults.quality)
+  // If the saved selection is gone (template deleted), fall back to the
+  // current quality default; if no quality default, the first template.
+  useEffect(() => {
+    if (!templates.find((t) => t.id === selectedTemplateId)) {
+      const fallback = templates.find((t) => t.id === defaults.quality)
+        ?? templates.find((t) => t.tier === 'quality')
+        ?? templates[0]
+      if (fallback) setSelectedTemplateId(fallback.id)
+    }
+  }, [templates, defaults.quality, selectedTemplateId])
+
   const [replacePrimary, setReplacePrimary] = useState(false)
   const [forceRender, setForceRender] = useState(true)
   const [selectedChapters, setSelectedChapters] = useState(new Set())
   const [chapterFilter, setChapterFilter] = useState('all')
   const [volumeTab, setVolumeTab] = useState('vol-1')
 
-  const template = forTier(tier)
-  const hasDefault = !!templates.find((t) => t.id === defaults[tier])
+  const template = templates.find((t) => t.id === selectedTemplateId) ?? forTier('quality')
 
   const [activeLog, setActiveLog] = useState('')
   const logPollRef = useRef(null)
@@ -252,38 +263,45 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
       {/* ── Stage for Rendering — fills remaining space ───────────────────── */}
       <div className="queue-add-section">
 
-        {/* Options form — Fast/Quality picker (engine/voice/knobs come from
-            the user's voice template for the chosen tier; manage at ⚙). */}
+        {/* Options — pick any saved voice template; tier badge shows fast vs
+            quality. User curates the list at the topbar ⚙ → Voice Templates. */}
         <div className="queue-add-form">
           <div className="queue-section-label" style={{ padding: '10px 16px 0' }}>Stage for Rendering</div>
           <div style={{ padding: '8px 16px 0' }}>
-            <div className="gen-tier-row">
-              <button
-                type="button"
-                className={`gen-tier-btn${tier === 'fast' ? ' gen-tier-btn--active' : ''}`}
-                onClick={() => setTier('fast')}
-              >
-                ⚡ Fast
-                <span className="gen-tier-sub">edit-loop preview</span>
-              </button>
-              <button
-                type="button"
-                className={`gen-tier-btn${tier === 'quality' ? ' gen-tier-btn--active' : ''}`}
-                onClick={() => setTier('quality')}
-              >
-                🎙 Quality
-                <span className="gen-tier-sub">ship voice</span>
-              </button>
-            </div>
-            <div className="gen-template-info">
-              Using template: <strong>{template?.name || '(default)'}</strong>
-              <span className="gen-template-meta">
-                {template?.engine} · {template?.voice}
-                {template?.speed != null && ` · ${template.speed}×`}
-              </span>
-              {!hasDefault && (
-                <span className="gen-template-warn">No default set for {tier} — using fallback.</span>
+            <div className="queue-template-picker">
+              {templates.length === 0 && (
+                <div className="queue-template-empty">
+                  No voice templates yet. Open the ⚙ in the topbar to create one.
+                </div>
               )}
+              {templates.map((t) => {
+                const isActive = t.id === selectedTemplateId
+                const isDefaultFast = defaults.fast === t.id
+                const isDefaultQuality = defaults.quality === t.id
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`queue-template-card${isActive ? ' queue-template-card--active' : ''}`}
+                    onClick={() => setSelectedTemplateId(t.id)}
+                    title={t.notes || ''}
+                  >
+                    <div className="queue-template-card-row">
+                      <span className={`vts-tier vts-tier--${t.tier}`}>
+                        {t.tier === 'fast' ? '⚡' : '🎙'} {t.tier}
+                      </span>
+                      <span className="queue-template-card-name">{t.name}</span>
+                      {(isDefaultFast || isDefaultQuality) && (
+                        <span className="queue-template-default" title={`Default for ${isDefaultFast ? 'Fast' : 'Quality'}`}>★</span>
+                      )}
+                    </div>
+                    <div className="queue-template-card-meta">
+                      {t.engine} · {t.voice}
+                      {t.speed != null && ` · ${t.speed}×`}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
             <div className="queue-form-checks">
               <label>

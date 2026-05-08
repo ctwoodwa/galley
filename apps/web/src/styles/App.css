@@ -699,6 +699,68 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 }
 .gen-force-check input { accent-color: var(--accent); }
 
+/* ── Queue template picker (multi-template select) ───────────────────────── */
+.queue-template-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  padding: 2px;
+}
+.queue-template-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  border: 1px dashed var(--sidebar-border);
+  border-radius: var(--radius);
+}
+.queue-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font);
+  padding: 7px 10px;
+  text-align: left;
+  transition: all 0.12s;
+}
+.queue-template-card:hover { border-color: var(--text-dim); }
+.queue-template-card--active {
+  border-color: var(--accent);
+  background: rgba(91, 138, 245, 0.08);
+}
+.queue-template-card-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.queue-template-card-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.queue-template-default {
+  color: #e8a040;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.queue-template-card-meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
 .defaults-badge {
   font-size: 11.5px;
   color: var(--text-muted);
