@@ -459,11 +459,19 @@ export default function ChapterView({
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────
 
+  // Keyboard handler is bound after the seek + repeat + bookmark callbacks
+  // are declared (further down in this function). We use a ref-based
+  // late-binding trick so this useEffect can stay near the other reader
+  // setup effects: keyHandlersRef is initialised empty, then populated by a
+  // second effect that runs AFTER the callbacks exist.
+  const keyHandlersRef = useRef({})
+
   useEffect(() => {
     const INTERACTIVE = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
     const onKey = (e) => {
       if (INTERACTIVE.has(e.target.tagName) || e.target.isContentEditable) return
       if (e.ctrlKey || e.metaKey || e.altKey) return
+      const h = keyHandlersRef.current
       switch (e.key) {
         case ' ':
           e.preventDefault()
@@ -471,10 +479,10 @@ export default function ChapterView({
           break
         case 'ArrowLeft':
           e.preventDefault()
-          if (alignedChunks) {
+          if (h.alignedChunks && h.seekRelativeSentence) {
             // sentence-aware: ← = -1 sentence; Shift+← = -1 paragraph
-            if (e.shiftKey) seekRelativeParagraph(-1)
-            else seekRelativeSentence(-1)
+            if (e.shiftKey) h.seekRelativeParagraph?.(-1)
+            else h.seekRelativeSentence(-1)
           } else {
             // No alignment data — fall back to time-based skip.
             playerRef.current?.seek(e.shiftKey ? -30 : -10)
@@ -482,9 +490,9 @@ export default function ChapterView({
           break
         case 'ArrowRight':
           e.preventDefault()
-          if (alignedChunks) {
-            if (e.shiftKey) seekRelativeParagraph(1)
-            else seekRelativeSentence(1)
+          if (h.alignedChunks && h.seekRelativeSentence) {
+            if (e.shiftKey) h.seekRelativeParagraph?.(1)
+            else h.seekRelativeSentence(1)
           } else {
             playerRef.current?.seek(e.shiftKey ? 30 : 10)
           }
@@ -503,23 +511,23 @@ export default function ChapterView({
           break
         case 'r':
         case 'R':
-          if (alignedChunks) {
+          if (h.alignedChunks && h.repeatCurrentSentence) {
             e.preventDefault()
-            repeatCurrentSentence()
+            h.repeatCurrentSentence()
           }
           break
         case 'b':
         case 'B':
-          if (alignedChunks) {
+          if (h.alignedChunks && h.markForReview) {
             e.preventDefault()
-            markForReview()
+            h.markForReview()
           }
           break
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [alignedChunks, seekRelativeSentence, seekRelativeParagraph, repeatCurrentSentence, markForReview])
+  }, [])
 
   // ── Chunk map + sentence-click data attributes ────────────────────────
 
@@ -674,6 +682,17 @@ export default function ChapterView({
     }
     audio.currentTime = map[target].start_seconds
   }, [findCurrentChunkIdx])
+
+  // Late-bind keyboard-handler ref so the useEffect above (which only sees
+  // an empty ref initially) can call into these callbacks without TDZ.
+  // Runs every render — cheap.
+  keyHandlersRef.current = {
+    alignedChunks,
+    seekRelativeSentence,
+    seekRelativeParagraph,
+    repeatCurrentSentence,
+    markForReview,
+  }
 
   // ── Phase B: click-to-localize on a sentence/paragraph ────────────────
 
