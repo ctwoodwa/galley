@@ -1577,6 +1577,15 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   overflow: hidden;
 }
 
+/* When the fixed-bottom render footer is visible (.app--rendering on the
+   layout root), shorten the side drawers so their pinned Stage/Mark/Clear
+   footers don't disappear behind the 36 px progress strip. */
+.app--rendering .queue-panel:not(.queue-panel--inline),
+.app--rendering .review-panel:not(.review-panel--inline),
+.app--rendering .log-panel:not(.log-panel--inline) {
+  height: calc(100vh - 36px);
+}
+
 /* Inline mode — when rendered as a route page (/read/:bookId/queue|review|logs)
    instead of as an overlay drawer. Fills the parent .page-full instead of
    floating fixed at the right of the viewport. The .log-panel--inline rule
