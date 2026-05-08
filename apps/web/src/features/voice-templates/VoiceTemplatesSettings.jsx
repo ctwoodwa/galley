@@ -144,12 +144,15 @@ export default function VoiceTemplatesSettings({ open, onClose }) {
     setDefault(form.tier, editingId)
   }
 
+  // Hook calls must run unconditionally on every render (Rules of Hooks).
+  // The catalog fetch lives here, before the open=false early return, so
+  // closing/reopening the modal doesn't change the hook count.
+  const { voices, loading: voicesLoading, error: voicesError } = useVoiceCatalog(form.engine)
+
   if (!open) return null
 
   const editing = editingId !== null
   const showChatterboxKnobs = form.engine === 'chatterbox'
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { voices, loading: voicesLoading, error: voicesError } = useVoiceCatalog(form.engine)
   // If the saved voice isn't in the live catalog (deleted, mismatched engine,
   // server cold-start 503), surface it as a (missing) option so the user
   // doesn't lose track of what's stored.
