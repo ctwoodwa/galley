@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { SortableQueueList } from './SortableQueueList'
 import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
 import { templateToRenderConfig } from '@/lib/voice-templates'
+import { useApiConfig } from '@/api/config'
 
 const PANEL_MIN = 340
 const PANEL_MAX = 720
@@ -123,9 +124,19 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
   const selectAll  = () => setSelectedChapters(new Set(filteredChapters.map(c => c.id)))
   const selectNone = () => setSelectedChapters(new Set())
 
+  const apiKey = useApiConfig.getState().apiKey
   const handleAddToQueue = async () => {
     if (selectedChapters.size === 0) return
     const cfg = templateToRenderConfig(template)
+    const needsKey = cfg.engine === 'chatterbox' || cfg.engine === 'kokoro'
+    if (needsKey && !apiKey) {
+      alert(
+        'No API key configured for the remote TTS engine.\n\n' +
+        'Open the topbar ⚙ → Inference API Settings → paste your Bearer token, ' +
+        'or switch to a local-Kokoro template (no key needed).'
+      )
+      return
+    }
     const voiceForSuffix = template?.voice || ''
     const outputSuffix = replacePrimary ? '' : (voiceForSuffix ? `--${voiceForSuffix}` : '')
     const items = [...selectedChapters].map(chapter_id => ({
@@ -134,6 +145,7 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
         ...cfg,
         force: forceRender || undefined,
         output_suffix: outputSuffix || undefined,
+        ...(needsKey && apiKey ? { api_key: apiKey } : {}),
       },
     }))
     try {

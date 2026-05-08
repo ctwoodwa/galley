@@ -417,14 +417,22 @@ function startGeneration(chapterId, options = {}, onFinish) {
   const env = { ...process.env }
   if (options.api_key) env.TTS_API_KEY = options.api_key
 
-  const logStream = fs.createWriteStream(logFile)
+  // Node 24+ requires an already-opened file descriptor for stdio when the
+  // child process is spawned. fs.createWriteStream opens async, so its
+  // .fd is still null when spawn() runs — that throws "argument 'stdio'
+  // is invalid. Received WriteStream{ fd: null }". Use openSync to get
+  // a real fd up-front; close it after spawn detaches.
+  const logFd = fs.openSync(logFile, 'a')
   const proc = spawn('python3', args, {
     cwd: data.book.bookRoot,
     detached: true,
-    stdio: ['ignore', logStream, logStream],
+    stdio: ['ignore', logFd, logFd],
     env,
   })
   proc.unref()
+  // Parent process can close its handle now — the child has its own
+  // duplicates of the fd via stdio.
+  try { fs.closeSync(logFd) } catch {}
 
   const jobId = `job-${ts}`
   const job = {

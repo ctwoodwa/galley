@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
 import { templateToRenderConfig } from '@/lib/voice-templates'
+import { useApiConfig } from '@/api/config'
 
 const KOKORO_PRESETS = ['male', 'male-solo', 'female', 'female-solo', 'sinek', 'practitioner', 'british', 'fenrir', 'au']
 const CHATTERBOX_PRESETS = ['male', 'female-solo', 'broom_salesman', 'sinek', 'practitioner', 'british', 'fenrir', 'fry', 'ciufi-galeazzi']
@@ -157,6 +158,10 @@ export default function GeneratePanel({ bookId, chapter, onGenerated }) {
 // voice templates (see /lib/voice-templates.js + the gear-icon settings).
 function SimpleGenerateForm({ chapter, onGenerate }) {
   const { defaults, templates, forTier } = useVoiceTemplates()
+  // Bearer token for the remote TTS engines (chatterbox / remote kokoro);
+  // pulled from the inference-studio's settings drawer, single source of
+  // truth across the app. Without it, audiobook.py exits with an auth error.
+  const apiKey = useApiConfig((s) => s.apiKey)
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => defaults.quality)
   const [force, setForce] = useState(false)
 
@@ -175,7 +180,18 @@ function SimpleGenerateForm({ chapter, onGenerate }) {
 
   const handle = () => {
     const cfg = templateToRenderConfig(template)
-    onGenerate({ ...cfg, force, chapter_id: chapter.id })
+    const needsKey = cfg.engine === 'chatterbox' || cfg.engine === 'kokoro'
+    const body = { ...cfg, force, chapter_id: chapter.id }
+    if (needsKey && apiKey) body.api_key = apiKey
+    if (needsKey && !apiKey) {
+      alert(
+        'No API key configured for the remote TTS engine.\n\n' +
+        'Open the topbar ⚙ → Inference API Settings → paste your Bearer token, ' +
+        'or switch to the local-Kokoro template (no key needed).'
+      )
+      return
+    }
+    onGenerate(body)
   }
 
   return (
