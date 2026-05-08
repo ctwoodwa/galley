@@ -1757,6 +1757,27 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   word-break: break-all;
 }
 
+/* ── Phase F stale-chunk chime toggle ───────────────────────────────── */
+.chime-toggle {
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.chime-toggle[aria-pressed="true"] {
+  background: #fdf5e3;
+  border-color: #b58324;
+  color: #6b4d18;
+}
+.chime-toggle:hover { border-color: var(--text-muted); }
+
 /* ── Phase E commit-edits button — high-emphasis amber CTA ────────────── */
 .regen-btn--commit {
   background: #d6a85e !important;

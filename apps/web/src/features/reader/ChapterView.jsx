@@ -8,6 +8,7 @@ import CommentToolbar from '../annotations/CommentToolbar.jsx'
 import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
 import { templateToRenderConfig } from '@/lib/voice-templates'
 import { useApiConfig } from '@/api/config'
+import { playStaleChime, isChimeEnabled, setChimeEnabled } from '@/lib/chime'
 
 function stripFrontmatter(md) {
   return md.replace(/^---\n[\s\S]*?\n---\n?/, '')
@@ -283,6 +284,24 @@ export default function ChapterView({
   const [staleChunkIds, setStaleChunkIds] = useState(new Set())
   const [pendingEditCount, setPendingEditCount] = useState(0)
   const [committingEdits, setCommittingEdits] = useState(false)
+  // Phase F: chime when audio crosses a stale chunk. Stored in localStorage
+  // (galley.reader.chime-enabled). Set tracks chunks that have already
+  // chimed in this session so we don't re-fire on every poll tick.
+  const [chimeEnabled, setChimeEnabledState] = useState(() => isChimeEnabled())
+  const chimedChunksRef = useRef(new Set())
+  const lastActiveChunkIdRef = useRef(null)
+  const toggleChime = useCallback(() => {
+    setChimeEnabledState((on) => { setChimeEnabled(!on); return !on })
+  }, [])
+  // When stale set shrinks (commit applied), drop chimed entries that are
+  // no longer stale so re-staling them later (re-edit) chimes again.
+  useEffect(() => {
+    const remaining = new Set()
+    for (const id of chimedChunksRef.current) {
+      if (staleChunkIds.has(id)) remaining.add(id)
+    }
+    chimedChunksRef.current = remaining
+  }, [staleChunkIds])
 
   // ── Chapter-level (overall) note form ───────────────────────────────────
   const [showNoteForm, setShowNoteForm] = useState(false)
@@ -961,6 +980,20 @@ export default function ChapterView({
       if (t >= entry.start_seconds && t < entry.end_seconds) { activeChunk = entry; break }
     }
 
+    // Phase F: stale-chunk chime. Fire when transitioning INTO a stale
+    // chunk we haven't chimed yet this play session. Each chunk chimes
+    // at most once until it's committed (staleChunkIds drops it on
+    // commit, which clears chimedChunksRef in the related effect).
+    if (activeChunk && activeChunk.chunk_id !== lastActiveChunkIdRef.current) {
+      lastActiveChunkIdRef.current = activeChunk.chunk_id
+      if (chimeEnabled
+          && staleChunkIds.has(activeChunk.chunk_id)
+          && !chimedChunksRef.current.has(activeChunk.chunk_id)) {
+        chimedChunksRef.current.add(activeChunk.chunk_id)
+        playStaleChime()
+      }
+    }
+
     const active = activeChunk?.element || null
 
     // On seek to the same element: force rewrap + scroll to clear stale word state
@@ -1172,6 +1205,19 @@ export default function ChapterView({
             <span className="align-stale-warn" title="Audio was regenerated after alignment was built — re-run audiobook.py --force to fix sync">
               ⚠ sync stale — re-render to fix
             </span>
+          )}
+          {staleChunkIds.size > 0 && (
+            <button
+              type="button"
+              className="chime-toggle"
+              onClick={toggleChime}
+              title={chimeEnabled
+                ? 'Stale-chunk chime is ON — beep once per pending edit while listening'
+                : 'Stale-chunk chime is OFF — click to enable'}
+              aria-pressed={chimeEnabled}
+            >
+              {chimeEnabled ? '🔔' : '🔕'} {staleChunkIds.size}
+            </button>
           )}
         </div>
       </div>
