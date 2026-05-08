@@ -841,6 +841,36 @@ app.post('/api/books/:bookId/chapters/:id/commit-edits', (req, res) => {
   })
 })
 
+// Phase I: book-wide summary of which chapters have pending sentence edits.
+// Drives the "Stage all with edits" gesture in the queue panel — one click
+// to apply + stage everything across the book.
+app.get('/api/books/:bookId/pending-edits-summary', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const editsDir = path.join(bookBuildDir(req.params.bookId), 'pending-edits')
+  if (!fs.existsSync(editsDir)) return res.json([])
+  const result = []
+  for (const file of fs.readdirSync(editsDir)) {
+    if (!file.endsWith('.jsonl')) continue
+    const slug = file.replace(/\.jsonl$/, '')
+    const chapter = data.chapters.find(c => c.slug === slug)
+    if (!chapter) continue
+    let count = 0
+    try {
+      count = fs.readFileSync(path.join(editsDir, file), 'utf8').trim().split('\n').filter(Boolean).length
+    } catch {}
+    if (count === 0) continue
+    result.push({
+      chapter_id: chapter.id,
+      chapter_slug: chapter.slug,
+      chapter_title: chapter.title,
+      volume: chapter.volume,
+      count,
+    })
+  }
+  res.json(result)
+})
+
 app.get('/api/books/:bookId/chapters/:id/sentence-edits', (req, res) => {
   const data = getBook(req.params.bookId)
   if (!data) return res.status(404).json({ error: 'Book not found' })

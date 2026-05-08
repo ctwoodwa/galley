@@ -145,6 +145,75 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false, p
   const selectNone = () => setSelectedChapters(new Set())
 
   const apiKey = useApiConfig.getState().apiKey
+
+  // Phase I: book-wide pending-edits summary. Refresh on mount, on queue
+  // transitions (a completed render may clear a journal), and after the
+  // bulk-stage action below applies edits.
+  const bookId = chapters[0]?.book_id
+  const [pendingByChapter, setPendingByChapter] = useState([])
+  const [bulkStaging, setBulkStaging] = useState(false)
+  const refreshPendingSummary = useCallback(() => {
+    if (!bookId) return
+    fetch(`/api/books/${bookId}/pending-edits-summary`)
+      .then((r) => r.ok ? r.json() : [])
+      .then(setPendingByChapter)
+      .catch(() => {})
+  }, [bookId])
+  useEffect(() => { refreshPendingSummary() }, [refreshPendingSummary, queue.active?.job_id])
+
+  const handleBulkStageWithEdits = useCallback(async () => {
+    if (bulkStaging || pendingByChapter.length === 0) return
+    setBulkStaging(true)
+    const cfg = templateToRenderConfig(template)
+    const needsKey = cfg.engine === 'chatterbox' || cfg.engine === 'kokoro'
+    if (needsKey && !apiKey) {
+      alert('No API key configured for the remote TTS engine.\n\nOpen ⚙ → Inference API Settings → paste your Bearer token.')
+      setBulkStaging(false)
+      return
+    }
+    const opts = { ...cfg, ...(needsKey && apiKey ? { api_key: apiKey } : {}), force: true }
+    let appliedTotal = 0
+    let skippedChapters = []
+
+    // Apply edits per-chapter (regen:false so commit-edits doesn't spawn a
+    // foreground render — we'll stage them all in one batch right after).
+    for (const entry of pendingByChapter) {
+      try {
+        const r = await fetch(`/api/books/${bookId}/chapters/${entry.chapter_id}/commit-edits`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ regen: false, options: opts }),
+        })
+        const data = await r.json()
+        if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`)
+        appliedTotal += data.applied?.length || 0
+      } catch (err) {
+        skippedChapters.push(`${entry.chapter_slug}: ${err.message}`)
+      }
+    }
+
+    // Stage everything as one batch — user clicks Process to actually run.
+    try {
+      const items = pendingByChapter.map((e) => ({ chapter_id: e.chapter_id, options: opts }))
+      const r = await fetch('/api/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      })
+      if (!r.ok) throw new Error('stage failed')
+    } catch (err) {
+      alert(`Stage failed: ${err.message}`)
+      setBulkStaging(false)
+      return
+    }
+
+    refreshPendingSummary()
+    setBulkStaging(false)
+    const note = skippedChapters.length
+      ? `\n\nSkipped chapters:\n${skippedChapters.join('\n')}`
+      : ''
+    alert(`Applied ${appliedTotal} edit${appliedTotal === 1 ? '' : 's'} across ${pendingByChapter.length - skippedChapters.length} chapter${pendingByChapter.length - skippedChapters.length === 1 ? '' : 's'}; staged in queue.${note}`)
+  }, [bulkStaging, pendingByChapter, template, apiKey, bookId, refreshPendingSummary])
   const handleAddToQueue = async () => {
     if (selectedChapters.size === 0) return
     const cfg = templateToRenderConfig(template)
@@ -291,6 +360,23 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false, p
           </div>
         )}
       </div>
+
+      {/* ── Phase I: bulk stage chapters that have pending sentence edits ─ */}
+      {pendingByChapter.length > 0 && (
+        <div className="queue-section">
+          <div className="queue-section-label">Pending edits</div>
+          <button
+            className="queue-bulk-stage-btn"
+            onClick={handleBulkStageWithEdits}
+            disabled={bulkStaging}
+            title="Apply pending sentence edits to source.md across all chapters and stage them in the queue under the active voice template"
+          >
+            {bulkStaging
+              ? `Applying + staging ${pendingByChapter.length}…`
+              : `📥 Stage all ${pendingByChapter.length} chapter${pendingByChapter.length === 1 ? '' : 's'} with edits (${pendingByChapter.reduce((n, e) => n + e.count, 0)} total)`}
+          </button>
+        </div>
+      )}
 
       {/* ── Stage for Rendering — fills remaining space ───────────────────── */}
       <div className="queue-add-section">

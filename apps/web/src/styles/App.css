@@ -1757,6 +1757,24 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   word-break: break-all;
 }
 
+/* ── Phase I bulk-stage button (queue panel) ─────────────────────────── */
+.queue-bulk-stage-btn {
+  margin: 4px 16px 8px;
+  padding: 9px 12px;
+  background: #d6a85e;
+  color: #1d2327;
+  border: 1px solid #b58324;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.queue-bulk-stage-btn:hover:not(:disabled) { background: #e0b673; }
+.queue-bulk-stage-btn:disabled { opacity: 0.6; cursor: progress; }
+
 /* ── Phase G dictation status pill (shown while recording/transcribing) ─ */
 .dictate-pill {
   display: inline-flex;
