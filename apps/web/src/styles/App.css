@@ -830,6 +830,29 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   overflow: hidden;
 }
 
+/* Inline mode — when rendered as a route page (/read/:bookId/queue|review|logs)
+   instead of as an overlay drawer. Fills the parent .page-full instead of
+   floating fixed at the right of the viewport. */
+.queue-panel--inline {
+  position: static;
+  top: auto;
+  right: auto;
+  height: 100%;
+  width: 100% !important;
+  border-left: none;
+  z-index: auto;
+}
+.log-panel--inline {
+  position: static;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  height: 100% !important;
+  width: 100%;
+  border-top: none;
+  z-index: auto;
+}
+
 /* ── Queue resize handle (left edge, mirrors sidebar) ─────────────────────── */
 .queue-resize-handle {
   position: absolute;

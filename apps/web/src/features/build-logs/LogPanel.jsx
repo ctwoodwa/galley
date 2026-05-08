@@ -122,7 +122,7 @@ function LogItem({ log, selected, onSelect }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export default function LogPanel({ bookId, onClose }) {
+export default function LogPanel({ bookId, onClose, inline = false }) {
   const [panelHeight, setPanelHeight] = useState(
     () => Math.min(HEIGHT_MAX, Math.max(HEIGHT_MIN, parseInt(localStorage.getItem(HEIGHT_KEY) || HEIGHT_DEFAULT, 10)))
   )
@@ -280,9 +280,9 @@ export default function LogPanel({ bookId, onClose }) {
   const showProgress = logData && progress > 0 && progress < 99.5
 
   return (
-    <div className="log-panel" style={{ height: effectiveHeight }}>
-      {/* Drag handle */}
-      <div className="log-resize-handle" onMouseDown={onDragMouseDown} title="Drag to resize" />
+    <div className={`log-panel${inline ? ' log-panel--inline' : ''}`} style={inline ? undefined : { height: effectiveHeight }}>
+      {/* Drag handle — drawer mode only */}
+      {!inline && <div className="log-resize-handle" onMouseDown={onDragMouseDown} title="Drag to resize" />}
 
       {/* Header */}
       <div className="log-panel-header">
@@ -311,7 +311,9 @@ export default function LogPanel({ bookId, onClose }) {
         >
           {maximized ? '⊟' : '⊞'}
         </button>
-        <button className="log-panel-close" onClick={onClose} title="Close">✕</button>
+        {onClose && (
+          <button className="log-panel-close" onClick={onClose} title="Close">✕</button>
+        )}
       </div>
 
       {/* Body */}

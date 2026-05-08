@@ -13,7 +13,7 @@ function presetToVoiceKey(preset) {
   return preset || ''
 }
 
-export default function QueuePanel({ chapters, queue, onClose }) {
+export default function QueuePanel({ chapters, queue, onClose, inline = false }) {
   const [engine, setEngine] = useState('chatterbox')
   const [preset, setPreset] = useState('ciufi-galeazzi')
   const [voiceKey, setVoiceKey] = useState('ciufi-galeazzi')
@@ -161,15 +161,17 @@ export default function QueuePanel({ chapters, queue, onClose }) {
   const statusLabel    = s   => s === 'done' ? '✓' : s === 'failed' ? '✗' : s === 'running' ? '…' : ''
 
   return (
-    <div className="queue-panel" style={{ width: panelWidth }}>
+    <div className={`queue-panel${inline ? ' queue-panel--inline' : ''}`} style={inline ? undefined : { width: panelWidth }}>
 
-      {/* ── Resize handle (left edge) ─────────────────────────────────────── */}
-      <div className="queue-resize-handle" onMouseDown={onResizeMouseDown} />
+      {/* ── Resize handle (left edge) — drawer mode only ─────────────────── */}
+      {!inline && <div className="queue-resize-handle" onMouseDown={onResizeMouseDown} />}
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="queue-header">
         <span className="queue-header-title">Render Queue</span>
-        <button className="queue-close-btn" onClick={onClose} title="Close">✕</button>
+        {onClose && (
+          <button className="queue-close-btn" onClick={onClose} title="Close">✕</button>
+        )}
       </div>
 
       {/* ── Jobs: active + staged + pending + history ─────────────────────── */}

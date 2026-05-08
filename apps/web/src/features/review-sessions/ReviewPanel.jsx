@@ -32,7 +32,7 @@ function groupByChapter(comments) {
   return [...map.values()]
 }
 
-export default function ReviewPanel({ bookId, session, onClose, onSessionUpdate }) {
+export default function ReviewPanel({ bookId, session, onClose, onSessionUpdate, inline = false }) {
   const [submitMsg, setSubmitMsg]   = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -119,10 +119,10 @@ export default function ReviewPanel({ bookId, session, onClose, onSessionUpdate 
   }
 
   return (
-    <div className="queue-panel review-panel" style={{ width: panelWidth }}>
+    <div className={`queue-panel review-panel${inline ? ' queue-panel--inline' : ''}`} style={inline ? undefined : { width: panelWidth }}>
 
-      {/* ── Resize handle (left edge) ──────────────────────────────────────── */}
-      <div className="queue-resize-handle" onMouseDown={onResizeMouseDown} />
+      {/* ── Resize handle (left edge) — drawer mode only ───────────────────── */}
+      {!inline && <div className="queue-resize-handle" onMouseDown={onResizeMouseDown} />}
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="queue-header">
@@ -132,7 +132,9 @@ export default function ReviewPanel({ bookId, session, onClose, onSessionUpdate 
             <span className="review-badge" style={{ marginLeft: 8 }}>{commentCount}</span>
           )}
         </span>
-        <button className="queue-close-btn" onClick={onClose} title="Close">✕</button>
+        {onClose && (
+          <button className="queue-close-btn" onClick={onClose} title="Close">✕</button>
+        )}
       </div>
 
       {/* ── Submit controls (fixed, never scrolls away) ────────────────────── */}
