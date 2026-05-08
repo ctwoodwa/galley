@@ -3,7 +3,7 @@ import { useLocalStorage } from '@/hooks/inference/useLocalStorage'
 import type { TTSClient, KnobValues, AudioFormat, ModelId } from '@galley/api-client'
 import { KnobSlider } from './KnobSlider'
 import { PresetButtons, PRESETS } from './PresetButtons'
-import { AudioPlayer } from './AudioPlayer'
+import { WaveformPlayer } from './WaveformPlayer'
 import { ErrorBanner } from './ErrorBanner'
 import { SampleTextPicker } from './SampleTextPicker'
 
@@ -206,7 +206,7 @@ export function SingleTab({
         }
       </button>
 
-      {audioBlob && canPlay && <AudioPlayer blob={audioBlob} format={format} />}
+      {audioBlob && canPlay && <WaveformPlayer blob={audioBlob} label={`${format.toUpperCase()} preview`} />}
       {audioBlob && !canPlay && (
         <a
           href={pcmUrl ?? '#'}
