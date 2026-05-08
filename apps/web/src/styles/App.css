@@ -314,19 +314,25 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 }
 
 .sentence-nav-pos {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-dim);
-  padding: 0 8px;
+  padding: 0 12px;
   white-space: nowrap;
+}
+.sentence-nav-pos .seg {
+  display: inline-block;
 }
 .sentence-nav-pos strong {
   color: var(--text);
   font-weight: 600;
+  margin: 0 2px;
 }
 .sentence-nav-pos .sep {
   color: var(--text-muted);
-  margin: 0 6px;
   opacity: 0.5;
 }
 

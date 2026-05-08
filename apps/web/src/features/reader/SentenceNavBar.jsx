@@ -129,13 +129,15 @@ export default function SentenceNavBar({
         ◀
       </button>
       <div className="sentence-nav-pos">
-        sent <strong>{pos.sentIndex}</strong>/{pos.sentTotal}
+        <span className="seg">sent <strong>{pos.sentIndex}</strong>/{pos.sentTotal}</span>
         {pos.paraTotal > 0 && (
           <>
-            <span className="sep">·</span>¶ <strong>{pos.paraIndex}</strong>/{pos.paraTotal}
+            <span className="sep" aria-hidden="true">·</span>
+            <span className="seg">para <strong>{pos.paraIndex}</strong>/{pos.paraTotal}</span>
             {pos.sentInParaTotal > 0 && (
               <>
-                <span className="sep">·</span>{pos.sentInPara}/{pos.sentInParaTotal} in ¶
+                <span className="sep" aria-hidden="true">·</span>
+                <span className="seg">{pos.sentInPara} of {pos.sentInParaTotal} in para</span>
               </>
             )}
           </>
