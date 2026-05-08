@@ -270,6 +270,10 @@ export default function ChapterView({
   const [loading, setLoading] = useState(true)
   const [showGenerate, setShowGenerate] = useState(false)
   const [audioInitialTime, setAudioInitialTime] = useState(0)
+  // Phase D: splash dialog when re-opening a chapter mid-listen.
+  // Three options: Resume from saved sentence · From start · Just browse.
+  const [splashOpen, setSplashOpen] = useState(false)
+  const [splashSentence, setSplashSentence] = useState(null) // { idx, total, text, t }
 
   // ── Chapter-level (overall) note form ───────────────────────────────────
   const [showNoteForm, setShowNoteForm] = useState(false)
@@ -326,6 +330,11 @@ export default function ChapterView({
     chunkMapRef.current = []
     lastTRef.current = -1
 
+    // Reset splash on chapter switch — only opens if there's a saved
+    // mid-listen position (audioTime > 30s) that we can offer to resume.
+    setSplashOpen(false)
+    setSplashSentence(null)
+
     Promise.all([
       fetch(`/api/books/${bookId}/chapters/${chapter.id}/content`).then(r => r.json()),
       fetch(`/api/books/${bookId}/chapters/${chapter.id}/alignment`).then(r => r.ok ? r.json() : null).catch(() => null)
@@ -334,6 +343,30 @@ export default function ChapterView({
       setAlignedChunks(alignData?.chunks || null)
       setAlignmentStale(alignData?.stale || false)
       setLoading(false)
+
+      // Phase D splash decision — only open if we have a meaningful saved
+      // position (>30s into the chapter) AND alignment data so we can map
+      // the time → sentence-N for the resume label. Otherwise just behave
+      // as before (auto-seek to saved time when audio loads).
+      const t = savedState?.audioTime || 0
+      if (t > 30 && alignData?.chunks?.length) {
+        let idx = -1
+        for (let i = 0; i < alignData.chunks.length; i++) {
+          const c = alignData.chunks[i]
+          if (t >= c.start_seconds && t < c.end_seconds) { idx = i; break }
+        }
+        if (idx < 0) idx = alignData.chunks.length - 1
+        const cur = alignData.chunks[idx]
+        const sentenceIdx = alignData.chunks.slice(0, idx + 1).filter((c) => !c.is_pause).length
+        const totalSentences = alignData.chunks.filter((c) => !c.is_pause).length
+        setSplashSentence({
+          idx: sentenceIdx,
+          total: totalSentences,
+          text: (cur.source_text || cur.text || '').trim().slice(0, 120),
+          t,
+        })
+        setSplashOpen(true)
+      }
     }).catch(() => setLoading(false))
   }, [chapter.id]) // eslint-disable-line
 
@@ -552,6 +585,31 @@ export default function ChapterView({
       el.dataset.firstChunkStart = String(info.starts[0])
     }
   }, [alignedChunks, content, loading])
+
+  // ── Phase D: splash handlers ──────────────────────────────────────────
+
+  const splashResume = useCallback(() => {
+    setSplashOpen(false)
+    // The audio element already has initialTime set; just trigger play.
+    const audio = playerRef.current?.audio?.()
+    if (audio) void audio.play().catch(() => {})
+  }, [])
+
+  const splashFromStart = useCallback(() => {
+    setSplashOpen(false)
+    setAudioInitialTime(0)
+    const audio = playerRef.current?.audio?.()
+    if (audio) {
+      audio.currentTime = 0
+      void audio.play().catch(() => {})
+    }
+  }, [])
+
+  const splashBrowse = useCallback(() => {
+    // Just close splash — audio stays paused at saved position so user can
+    // navigate sentences with click/←→ without auto-playing.
+    setSplashOpen(false)
+  }, [])
 
   // ── Phase D: repeat-current-sentence + bookmark ───────────────────────
 
@@ -1070,6 +1128,41 @@ export default function ChapterView({
       {phaseDToast && (
         <div className="phase-d-toast" role="status" aria-live="polite">
           {phaseDToast}
+        </div>
+      )}
+
+      {/* Phase D splash — three-option resume dialog when chapter has a
+          saved mid-listen position. Stays out of the way for fresh visits. */}
+      {splashOpen && splashSentence && (
+        <div className="resume-splash-backdrop" onClick={splashBrowse} aria-hidden="true">
+          <div
+            className="resume-splash"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resume-splash-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div id="resume-splash-title" className="resume-splash-title">
+              Pick up where you left off?
+            </div>
+            <div className="resume-splash-excerpt">
+              "{splashSentence.text}{splashSentence.text.length >= 120 ? '…' : ''}"
+            </div>
+            <div className="resume-splash-meta">
+              sentence {splashSentence.idx} / {splashSentence.total}
+            </div>
+            <div className="resume-splash-actions">
+              <button className="resume-splash-btn resume-splash-btn--primary" onClick={splashResume}>
+                ▶ Resume from sentence {splashSentence.idx}
+              </button>
+              <button className="resume-splash-btn" onClick={splashFromStart}>
+                ▶ From start
+              </button>
+              <button className="resume-splash-btn resume-splash-btn--ghost" onClick={splashBrowse}>
+                Just browse
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

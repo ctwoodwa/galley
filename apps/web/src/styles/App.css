@@ -283,6 +283,95 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   flex-wrap: wrap;
 }
 
+/* ── Phase D splash — pick-up-where-you-left-off dialog ────────────────── */
+.resume-splash-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: phaseDToastIn 120ms ease-out;
+}
+.resume-splash {
+  background: var(--surface);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  padding: 24px 28px;
+  max-width: 520px;
+  width: calc(100vw - 48px);
+  font-family: var(--font);
+}
+.resume-splash-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+.resume-splash-excerpt {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  font-style: italic;
+  border-left: 2px solid var(--accent);
+  padding: 4px 0 4px 12px;
+  margin-bottom: 8px;
+}
+.resume-splash-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+.resume-splash-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.resume-splash-btn {
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 9px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s;
+}
+.resume-splash-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(91, 138, 245, 0.06);
+}
+.resume-splash-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.resume-splash-btn--primary:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: #fff;
+}
+.resume-splash-btn--ghost {
+  border-color: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+.resume-splash-btn--ghost:hover {
+  background: var(--surface-2);
+  border-color: var(--sidebar-border);
+  color: var(--text-dim);
+}
+
 /* ── Phase D toast (R = repeat, B = bookmark confirmation) ─────────────── */
 .phase-d-toast {
   position: fixed;
