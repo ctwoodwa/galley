@@ -30,29 +30,31 @@
  *   }
  */
 
-// Bumped v1 → v2 (2026-05-08): seed Fast template held 'af_bella' (raw
-// Kokoro model voice) in the voice/preset slot. audiobook.py validates
-// against its preset catalog (female-solo, male-solo, ciufi-galeazzi, …)
-// and rejected af_bella. Old localStorage now ignored; user re-customizes
-// templates if they had personalized them.
-const STORAGE_KEY = 'galley.voice-templates.v2'
-const DEFAULTS_KEY = 'galley.voice-template-defaults.v2'
+// Bumped v2 → v3 (2026-05-08): the v2 fix had it backwards. audiobook.py's
+// preset catalog is for its CHAPTER_PRESET_MAP abstraction; the *voice*
+// catalog on the live Kokoro-FastAPI server (port 8880) only knows raw IDs
+// (af_bella, am_michael, …). Per-template, we now send `--voice af_bella`
+// directly and skip `--preset`; audiobook.py's default preset ('male')
+// passes its own validation, then args.voice overrides cfg.voice on
+// audiobook.py:1804. Old localStorage now ignored.
+const STORAGE_KEY = 'galley.voice-templates.v3'
+const DEFAULTS_KEY = 'galley.voice-template-defaults.v3'
 
 function uid() {
   // Browser-friendly short id. Not crypto-grade; just stable enough.
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 }
 
-// NOTE: `voice` here is the audiobook.py *preset name*, not a raw Kokoro
-// model voice. Catalog (kokoro engine): british, british-male,
-// ciufi-galeazzi, female, female-solo, fenrir, fry, fry-blend, male,
-// male-solo, practitioner, sinek. (Bella → female-solo internally.)
+// NOTE: `voice` is the *raw voice ID* from the live /audio/voices catalog —
+// for kokoro that's af_bella, am_michael, etc.; for chatterbox/higgs it's
+// the cloned-clip ID like ciufi-galeazzi or belinda. We forward this as
+// audiobook.py's `--voice` flag, which overrides any preset-resolved voice.
 const FAST_DEFAULT = {
   id: 'seed-fast',
   name: 'Quick draft (Fast)',
   tier: 'fast',
   engine: 'kokoro-local',
-  voice: 'female-solo',
+  voice: 'af_bella',
   speed: 1.0,
   per_sentence: true,
   notes: 'Local Kokoro Docker — instant feedback while editing. No API key needed.',
@@ -136,7 +138,7 @@ export function createTemplate(template) {
     name: template.name || 'Untitled',
     tier: template.tier === 'quality' ? 'quality' : 'fast',
     engine: template.engine || 'kokoro-local',
-    voice: template.voice || 'female-solo',
+    voice: template.voice || 'af_bella',
     speed: typeof template.speed === 'number' ? template.speed : 1.0,
     per_sentence: !!template.per_sentence,
     exaggeration: template.exaggeration,
@@ -189,9 +191,16 @@ export function deleteTemplate(id) {
  */
 export function templateToRenderConfig(template) {
   if (!template) return {}
+  // We only send `voice` (the raw catalog ID), not `preset`. audiobook.py
+  // takes its default preset ('male', valid in both PRESETS_KOKORO and
+  // PRESETS_CHATTERBOX), then `args.voice or cfg["voice"]` lets the
+  // template's voice win. Sending `--preset` here was the previous bug —
+  // it forced the user's voice through audiobook.py's preset catalog
+  // (female-solo / ciufi-galeazzi / …), which doesn't match the live
+  // Kokoro-FastAPI voice catalog and produced 400 "Voice 'female' not
+  // found" errors. See audiobook.py:1789-1814.
   const cfg = {
     engine: template.engine === 'kokoro-local' ? 'kokoro' : template.engine,
-    preset: template.voice,        // legacy field name on the server
     voice: template.voice,
     speed: template.speed,
     per_sentence: !!template.per_sentence,
