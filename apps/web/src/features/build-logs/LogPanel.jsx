@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { Trash2 } from 'lucide-react'
 
 const POLL_INTERVAL = 3000
 const LOG_LINE_PX = 20
@@ -340,8 +341,9 @@ export default function LogPanel({ bookId, onClose, inline = false }) {
           className="log-panel-clear"
           onClick={handleClearLogs}
           title="Clear all completed logs"
+          aria-label="Clear logs"
         >
-          🗑
+          <Trash2 size={14} strokeWidth={2} />
         </button>
         <button
           className={`log-maximize-btn ${maximized ? 'active' : ''}`}

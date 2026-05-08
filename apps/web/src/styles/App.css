@@ -1996,14 +1996,21 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   background: transparent;
   border: 1px solid transparent;
   color: var(--red);
-  font-size: 13px;
   cursor: pointer;
-  padding: 3px 7px;
+  padding: 4px 6px;
   margin-right: 4px;
   border-radius: 4px;
   line-height: 1;
   transition: all 0.12s;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.log-panel-clear svg {
+  display: block;
+  /* Inherit color so the SVG strokes match var(--red) on default + hover. */
+  color: inherit;
 }
 .log-panel-clear:hover {
   background: rgba(240, 82, 82, 0.12);
