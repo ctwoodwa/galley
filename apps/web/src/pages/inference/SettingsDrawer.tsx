@@ -1,7 +1,8 @@
 import { useApiConfig } from '@/api/config'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { BaseUrlSchema } from '@galley/api-client'
 
 interface SettingsDrawerProps {
   open: boolean
@@ -10,10 +11,12 @@ interface SettingsDrawerProps {
 
 /**
  * Right-side drawer that edits the Windows inference API config (baseUrl +
- * apiKey). Persists via the useApiConfig Zustand store.
+ * apiKey). Persists via the useApiConfig Zustand store. baseUrl validated
+ * via BaseUrlSchema (Zod); error shown inline.
  */
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const { baseUrl, apiKey, setBaseUrl, setApiKey, reset } = useApiConfig()
+  const [baseUrlError, setBaseUrlError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -23,6 +26,12 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  const handleBaseUrlChange = (val: string) => {
+    setBaseUrl(val)
+    const result = BaseUrlSchema.safeParse(val)
+    setBaseUrlError(result.success ? null : (result.error.issues[0]?.message ?? 'Invalid URL'))
+  }
 
   if (!open) return null
 
@@ -58,13 +67,20 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
             <input
               type="text"
               value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
+              onChange={(e) => handleBaseUrlChange(e.target.value)}
               placeholder="http://desktop-umt08rn:8881"
-              className="bg-bg border border-sidebar-border rounded px-3 py-2 text-sm text-text font-mono focus:outline-none focus:border-accent"
+              aria-invalid={baseUrlError ? 'true' : 'false'}
+              className={`bg-bg border rounded px-3 py-2 text-sm text-text font-mono focus:outline-none focus:border-accent ${
+                baseUrlError ? 'border-danger' : 'border-sidebar-border'
+              }`}
             />
-            <span className="text-xs text-text-muted">
-              Windows inference server. Default: http://desktop-umt08rn:8881
-            </span>
+            {baseUrlError ? (
+              <span className="text-xs text-danger">{baseUrlError}</span>
+            ) : (
+              <span className="text-xs text-text-muted">
+                Windows inference server. Default: http://desktop-umt08rn:8881
+              </span>
+            )}
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-text-dim">API key (Bearer token)</span>

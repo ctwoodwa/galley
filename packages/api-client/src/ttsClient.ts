@@ -4,6 +4,7 @@ import type {
   VoicesResponse,
   SpeechRequest,
 } from './types'
+import { HealthResponseSchema, VoicesResponseSchema } from './schemas'
 
 /**
  * Typed client for the TTS / audio surface of the Windows inference API.
@@ -22,7 +23,7 @@ export class TTSClient {
   async health(): Promise<HealthResponse> {
     const res = await fetch(`${this.baseUrl}/api/v1/health`)
     if (!res.ok) throw Object.assign(new Error('Health check failed'), { status: res.status })
-    return res.json() as Promise<HealthResponse>
+    return HealthResponseSchema.parse(await res.json())
   }
 
   async listVoices(refresh = false, model?: string): Promise<VoicesResponse> {
@@ -33,7 +34,7 @@ export class TTSClient {
     const url = `${this.baseUrl}/api/v1/audio/voices${qs ? '?' + qs : ''}`
     const res = await fetch(url, { headers: this.auth() })
     if (!res.ok) throw Object.assign(new Error(`List voices: ${res.status}`), { status: res.status })
-    return res.json() as Promise<VoicesResponse>
+    return VoicesResponseSchema.parse(await res.json())
   }
 
   async getVoice(id: string): Promise<VoiceMetadata> {
