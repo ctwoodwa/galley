@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 export default function LibraryPage() {
   const navigate = useNavigate()
@@ -51,6 +51,11 @@ export default function LibraryPage() {
       <header className="library-header">
         <h1 className="library-title">Galley</h1>
         <p className="library-subtitle">Editorial book library</p>
+        <p className="library-subtitle" style={{ marginTop: 8 }}>
+          <Link to="/inference" style={{ color: 'var(--accent)' }}>
+            → Inference Studio (raw API exploration)
+          </Link>
+        </p>
       </header>
 
       {loading ? (

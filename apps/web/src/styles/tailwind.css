@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Phase 1 dual-stack note: Tailwind layers are loaded BEFORE App.css so that
+ * App.css's specific selectors (.review-margin-host, .queue-panel, etc.) win
+ * for editorial UI. New studio panels use Tailwind utilities + shadcn/ui
+ * components.
+ */

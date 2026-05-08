@@ -10,6 +10,11 @@ import VoicesPage from '../../pages/studio/voices/VoicesPage.jsx'
 import SttQcPage from '../../pages/studio/stt-qc/SttQcPage.jsx'
 import CoverArtPage from '../../pages/studio/cover-art/CoverArtPage.jsx'
 import MusicPage from '../../pages/studio/music/MusicPage.jsx'
+import InferenceLayout from '../../pages/inference/InferenceLayout.tsx'
+import InferenceVoicesPage from '../../pages/inference/VoicesPage.tsx'
+import InferenceSttPage from '../../pages/inference/SttPage.tsx'
+import InferenceImagePage from '../../pages/inference/ImagePage.tsx'
+import InferenceMusicPage from '../../pages/inference/MusicPage.tsx'
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +40,19 @@ export const router = createBrowserRouter([
           { path: 'music', element: <MusicPage /> },
         ],
       },
+    ],
+  },
+  {
+    // Top-level inference studio (raw API exploration; not chapter-aware).
+    // Distinct from /read/:bookId/studio/* which is editorial.
+    path: '/inference',
+    element: <InferenceLayout />,
+    children: [
+      { index: true, element: <Navigate to="voices" replace /> },
+      { path: 'voices', element: <InferenceVoicesPage /> },
+      { path: 'stt', element: <InferenceSttPage /> },
+      { path: 'image', element: <InferenceImagePage /> },
+      { path: 'music', element: <InferenceMusicPage /> },
     ],
   },
 ])

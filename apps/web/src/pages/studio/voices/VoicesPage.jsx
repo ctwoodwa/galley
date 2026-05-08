@@ -1,5 +1,5 @@
 import { useOutletContext } from 'react-router-dom'
-import GeneratePanel from '../../../features/tts-voices/GeneratePanel.jsx'
+import GeneratePanel from '../../../features/tts/GeneratePanel.jsx'
 
 export default function VoicesPage() {
   const { selected } = useOutletContext()

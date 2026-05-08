@@ -914,6 +914,31 @@ app.delete('/api/queue', (_req, res) => {
   res.json(serializeQueue())
 })
 
+// Reorder helpers (for dnd-kit drag-and-drop in QueuePanel).
+// Body: { order: [qid1, qid2, ...] } — must include EVERY qid in the target list.
+function reorderArrayBy(arr, qidOrder) {
+  if (!Array.isArray(qidOrder) || qidOrder.length !== arr.length) return null
+  const lookup = new Map(arr.map(item => [item.queue_id, item]))
+  if (qidOrder.some(qid => !lookup.has(qid))) return null
+  arr.length = 0
+  for (const qid of qidOrder) arr.push(lookup.get(qid))
+  return arr
+}
+
+app.put('/api/queue/order', (req, res) => {
+  const result = reorderArrayBy(jobQueue, req.body?.order)
+  if (!result) return res.status(400).json({ error: 'order must include every queue_id exactly once' })
+  broadcast('queue-updated', serializeQueue())
+  res.json(serializeQueue())
+})
+
+app.put('/api/queue/staged/order', (req, res) => {
+  const result = reorderArrayBy(stagedQueue, req.body?.order)
+  if (!result) return res.status(400).json({ error: 'order must include every queue_id exactly once' })
+  broadcast('queue-updated', serializeQueue())
+  res.json(serializeQueue())
+})
+
 // ── Book-scoped: review session ───────────────────────────────────────────────
 
 function newSession() {
