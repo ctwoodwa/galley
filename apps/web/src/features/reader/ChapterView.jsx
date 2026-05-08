@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { marked } from 'marked'
 import AudioPlayer from '../audio-player/AudioPlayer.jsx'
-import GeneratePanel from '../tts-voices/GeneratePanel.jsx'
+import GeneratePanel from '../tts/GeneratePanel.jsx'
 import AudioMeta from '../audio-player/AudioMeta.jsx'
 import CommentToolbar from '../annotations/CommentToolbar.jsx'
 
