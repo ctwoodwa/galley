@@ -1,5 +1,63 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
+import { useApiConfig } from '@/api/config'
+
+/**
+ * Engine → live voice catalog. The voice template stores a raw voice ID
+ * that audiobook.py forwards as `--voice` straight to the inference server,
+ * so the dropdown must show whatever the *server* is willing to accept.
+ *
+ * - kokoro-local : GET ${kokoroLocalUrl}/v1/audio/voices  (no auth, returns
+ *                  string array — see ttsClient.ts FLAVORS for the shape).
+ * - kokoro       : GET ${baseUrl}/api/v1/audio/voices?model=kokoro (Bearer)
+ * - chatterbox   : GET ${baseUrl}/api/v1/audio/voices?model=higgs  (Bearer)
+ */
+function useVoiceCatalog(engine) {
+  const baseUrl        = useApiConfig((s) => s.baseUrl)
+  const apiKey         = useApiConfig((s) => s.apiKey)
+  const kokoroLocalUrl = useApiConfig((s) => s.kokoroLocalUrl)
+  const [voices, setVoices] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    let url, opts = {}
+    if (engine === 'kokoro-local') {
+      url = `${kokoroLocalUrl}/v1/audio/voices`
+    } else {
+      const model = engine === 'chatterbox' ? 'higgs' : 'kokoro'
+      url = `${baseUrl}/api/v1/audio/voices?model=${model}`
+      if (apiKey) opts.headers = { Authorization: `Bearer ${apiKey}` }
+    }
+
+    fetch(url, opts)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then((data) => {
+        if (cancelled) return
+        const raw = data?.voices ?? []
+        // Local Kokoro Docker emits a plain string array; remote emits
+        // [{id, transcript, sample_rate, is_stock}, …].
+        const norm = raw
+          .map((v) => (typeof v === 'string' ? { id: v } : v))
+          .filter((v) => v && v.id)
+        norm.sort((a, b) => a.id.localeCompare(b.id))
+        setVoices(norm)
+      })
+      .catch((e) => { if (!cancelled) setError(e?.message || String(e)) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+
+    return () => { cancelled = true }
+  }, [engine, baseUrl, apiKey, kokoroLocalUrl])
+
+  return { voices, loading, error }
+}
 
 const ENGINES = [
   { value: 'kokoro-local', label: 'Kokoro (local Docker · fast · free)' },
@@ -90,6 +148,13 @@ export default function VoiceTemplatesSettings({ open, onClose }) {
 
   const editing = editingId !== null
   const showChatterboxKnobs = form.engine === 'chatterbox'
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { voices, loading: voicesLoading, error: voicesError } = useVoiceCatalog(form.engine)
+  // If the saved voice isn't in the live catalog (deleted, mismatched engine,
+  // server cold-start 503), surface it as a (missing) option so the user
+  // doesn't lose track of what's stored.
+  const voiceMissingFromCatalog = !!form.voice && !voicesLoading && !voicesError
+    && !voices.some((v) => v.id === form.voice)
 
   return (
     <div className="vts-backdrop" onClick={onClose} aria-hidden="true">
@@ -179,13 +244,43 @@ export default function VoiceTemplatesSettings({ open, onClose }) {
                 </div>
 
                 <div className="vts-field">
-                  <label>Voice / preset</label>
-                  <input
-                    type="text"
-                    value={form.voice}
-                    onChange={(e) => setForm({ ...form, voice: e.target.value })}
-                    placeholder="ciufi-galeazzi"
-                  />
+                  <label>
+                    Voice
+                    {voicesLoading && <span className="vts-voice-status"> · loading…</span>}
+                    {voicesError && <span className="vts-voice-status vts-voice-status--err"> · {voicesError}</span>}
+                    {!voicesLoading && !voicesError && voices.length > 0 && (
+                      <span className="vts-voice-status"> · {voices.length} available</span>
+                    )}
+                  </label>
+                  {voicesError ? (
+                    // Fallback to free-text when the catalog can't be fetched
+                    // (cold-start 503, kokoro-local Docker offline, …) so the
+                    // user can still save a known-good voice ID.
+                    <input
+                      type="text"
+                      value={form.voice}
+                      onChange={(e) => setForm({ ...form, voice: e.target.value })}
+                      placeholder="ciufi-galeazzi"
+                    />
+                  ) : (
+                    <select
+                      value={form.voice}
+                      onChange={(e) => setForm({ ...form, voice: e.target.value })}
+                      disabled={voicesLoading}
+                    >
+                      {voiceMissingFromCatalog && (
+                        <option value={form.voice}>{form.voice} (not in current catalog)</option>
+                      )}
+                      {voices.length === 0 && !voicesLoading && (
+                        <option value="">— no voices available —</option>
+                      )}
+                      {voices.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.id}{v.transcript ? ` — ${v.transcript.slice(0, 60)}${v.transcript.length > 60 ? '…' : ''}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="vts-field-row">

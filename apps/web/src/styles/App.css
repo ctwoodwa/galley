@@ -1748,6 +1748,15 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   word-break: break-all;
 }
 
+/* ── Voice-template editor: voice catalog status text ─────────────────── */
+.vts-voice-status {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 6px;
+}
+.vts-voice-status--err { color: #c9444c; }
+
 /* ── AudiobookProgress card (replaces raw <pre> log) ───────────────────── */
 .ap {
   margin-top: 10px;
