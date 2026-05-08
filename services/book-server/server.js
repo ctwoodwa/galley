@@ -412,7 +412,11 @@ function startGeneration(chapterId, options = {}, onFinish) {
   if (options.force)                args.push('--force')
   if (options.per_sentence)         args.push('--per-sentence')
   if (options.no_chapter_map)       args.push('--no-chapter-map')
-  if (options.output_suffix)        args.push('--output-suffix', options.output_suffix)
+  // `=` syntax avoids the argparse "expected one argument" error when the
+  // suffix starts with `-` (the QueuePanel emits e.g. `--af_bella` so that
+  // chapter files land as `chapter-N--af_bella.mp3`; argparse otherwise
+  // sees `--af_bella` as a separate flag).
+  if (options.output_suffix)        args.push(`--output-suffix=${options.output_suffix}`)
 
   const env = { ...process.env }
   if (options.api_key) env.TTS_API_KEY = options.api_key
