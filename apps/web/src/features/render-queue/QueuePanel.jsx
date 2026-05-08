@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { SortableQueueList } from './SortableQueueList'
 
 const KOKORO_PRESETS = ['male', 'male-solo', 'female', 'female-solo', 'sinek', 'practitioner', 'british', 'fenrir', 'au']
 const CHATTERBOX_PRESETS = ['male', 'female-solo', 'broom_salesman', 'sinek', 'practitioner', 'british', 'fenrir', 'fry', 'ciufi-galeazzi']
@@ -196,14 +197,23 @@ export default function QueuePanel({ chapters, queue, onClose }) {
               </button>
             </div>
             <div className="queue-items-list">
-              {queue.staged.map(item => (
-                <div key={item.queue_id} className="queue-item staged">
-                  <span className={`track-dot ${engineDotClass(item.options?.engine)}`} />
-                  <span className="queue-item-title">{item.chapter_title}</span>
-                  {item.options?.voice && <span className="queue-item-voice">{item.options.voice}</span>}
-                  <button className="queue-remove-btn" onClick={() => removeFromStaged(item.queue_id)} title="Remove">✕</button>
-                </div>
-              ))}
+              <SortableQueueList
+                items={queue.staged}
+                reorderEndpoint="/api/queue/staged/order"
+                renderItem={(item, dragProps) => (
+                  <div className="queue-item staged" {...dragProps} style={{ cursor: 'grab' }}>
+                    <span className={`track-dot ${engineDotClass(item.options?.engine)}`} />
+                    <span className="queue-item-title">{item.chapter_title}</span>
+                    {item.options?.voice && <span className="queue-item-voice">{item.options.voice}</span>}
+                    <button
+                      className="queue-remove-btn"
+                      onClick={(e) => { e.stopPropagation(); removeFromStaged(item.queue_id) }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      title="Remove"
+                    >✕</button>
+                  </div>
+                )}
+              />
             </div>
           </div>
         )}
@@ -215,14 +225,23 @@ export default function QueuePanel({ chapters, queue, onClose }) {
               <button className="queue-clear-btn" onClick={clearQueue}>Clear all</button>
             </div>
             <div className="queue-items-list">
-              {queue.queue.map(item => (
-                <div key={item.queue_id} className="queue-item">
-                  <span className={`track-dot ${engineDotClass(item.options?.engine)}`} />
-                  <span className="queue-item-title">{item.chapter_title}</span>
-                  {item.options?.voice && <span className="queue-item-voice">{item.options.voice}</span>}
-                  <button className="queue-remove-btn" onClick={() => removeFromQueue(item.queue_id)} title="Remove">✕</button>
-                </div>
-              ))}
+              <SortableQueueList
+                items={queue.queue}
+                reorderEndpoint="/api/queue/order"
+                renderItem={(item, dragProps) => (
+                  <div className="queue-item" {...dragProps} style={{ cursor: 'grab' }}>
+                    <span className={`track-dot ${engineDotClass(item.options?.engine)}`} />
+                    <span className="queue-item-title">{item.chapter_title}</span>
+                    {item.options?.voice && <span className="queue-item-voice">{item.options.voice}</span>}
+                    <button
+                      className="queue-remove-btn"
+                      onClick={(e) => { e.stopPropagation(); removeFromQueue(item.queue_id) }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      title="Remove"
+                    >✕</button>
+                  </div>
+                )}
+              />
             </div>
           </div>
         )}
