@@ -470,11 +470,23 @@ export default function ChapterView({
           break
         case 'ArrowLeft':
           e.preventDefault()
-          playerRef.current?.seek(e.shiftKey ? -30 : -10)
+          if (alignedChunks) {
+            // sentence-aware: ← = -1 sentence; Shift+← = -1 paragraph
+            if (e.shiftKey) seekRelativeParagraph(-1)
+            else seekRelativeSentence(-1)
+          } else {
+            // No alignment data — fall back to time-based skip.
+            playerRef.current?.seek(e.shiftKey ? -30 : -10)
+          }
           break
         case 'ArrowRight':
           e.preventDefault()
-          playerRef.current?.seek(e.shiftKey ? 30 : 10)
+          if (alignedChunks) {
+            if (e.shiftKey) seekRelativeParagraph(1)
+            else seekRelativeSentence(1)
+          } else {
+            playerRef.current?.seek(e.shiftKey ? 30 : 10)
+          }
           break
         case 'ArrowUp':
           if (!INTERACTIVE.has(document.activeElement?.tagName)) {
@@ -517,6 +529,66 @@ export default function ChapterView({
       el.dataset.firstChunkStart = String(info.starts[0])
     }
   }, [alignedChunks, content, loading])
+
+  // ── Phase C: sentence-aware seek helpers ──────────────────────────────
+
+  const findCurrentChunkIdx = useCallback(() => {
+    const map = chunkMapRef.current
+    if (!map.length) return -1
+    const audio = playerRef.current?.audio?.()
+    if (!audio) return -1
+    const t = audio.currentTime
+    for (let i = 0; i < map.length; i++) {
+      if (t >= map[i].start_seconds && t < map[i].end_seconds) return i
+    }
+    // Past end — return last
+    return map.length - 1
+  }, [])
+
+  const seekRelativeSentence = useCallback((delta) => {
+    const map = chunkMapRef.current
+    if (!map.length) return
+    const audio = playerRef.current?.audio?.()
+    if (!audio) return
+    let idx = findCurrentChunkIdx()
+    if (idx < 0) return
+    // Step delta sentences, skipping pauses (which are silent and not
+    // user-meaningful as a navigation target).
+    const step = delta > 0 ? 1 : -1
+    let remaining = Math.abs(delta)
+    while (remaining > 0) {
+      idx += step
+      if (idx < 0 || idx >= map.length) break
+      if (!map[idx].is_pause) remaining -= 1
+    }
+    if (idx < 0) idx = 0
+    if (idx >= map.length) idx = map.length - 1
+    audio.currentTime = map[idx].start_seconds
+  }, [findCurrentChunkIdx])
+
+  const seekRelativeParagraph = useCallback((delta) => {
+    const map = chunkMapRef.current
+    if (!map.length) return
+    const audio = playerRef.current?.audio?.()
+    if (!audio) return
+    const idx = findCurrentChunkIdx()
+    if (idx < 0) return
+    const currentEl = map[idx].element
+    const step = delta > 0 ? 1 : -1
+    // Walk until we cross a paragraph boundary (different .element) delta times.
+    let crossings = 0
+    let target = idx
+    let lastEl = currentEl
+    for (let i = idx + step; i >= 0 && i < map.length; i += step) {
+      if (map[i].element && map[i].element !== lastEl) {
+        crossings += 1
+        lastEl = map[i].element
+        target = i
+        if (crossings >= Math.abs(delta)) break
+      }
+    }
+    audio.currentTime = map[target].start_seconds
+  }, [findCurrentChunkIdx])
 
   // ── Phase B: click-to-localize on a sentence/paragraph ────────────────
 
