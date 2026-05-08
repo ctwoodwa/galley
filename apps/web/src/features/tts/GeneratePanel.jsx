@@ -157,10 +157,21 @@ export default function GeneratePanel({ bookId, chapter, onGenerated }) {
 // voice templates (see /lib/voice-templates.js + the gear-icon settings).
 function SimpleGenerateForm({ chapter, onGenerate }) {
   const { defaults, templates, forTier } = useVoiceTemplates()
-  const [tier, setTier] = useState('quality')
+  const [selectedTemplateId, setSelectedTemplateId] = useState(() => defaults.quality)
   const [force, setForce] = useState(false)
-  const template = forTier(tier)
-  const defaultsForTier = templates.find((t) => t.id === defaults[tier])
+
+  // If saved selection is gone (template deleted at settings), fall back to
+  // current quality default → any quality template → any template.
+  useEffect(() => {
+    if (!templates.find((t) => t.id === selectedTemplateId)) {
+      const fallback = templates.find((t) => t.id === defaults.quality)
+        ?? templates.find((t) => t.tier === 'quality')
+        ?? templates[0]
+      if (fallback) setSelectedTemplateId(fallback.id)
+    }
+  }, [templates, defaults.quality, selectedTemplateId])
+
+  const template = templates.find((t) => t.id === selectedTemplateId) ?? forTier('quality')
 
   const handle = () => {
     const cfg = templateToRenderConfig(template)
@@ -169,34 +180,40 @@ function SimpleGenerateForm({ chapter, onGenerate }) {
 
   return (
     <div className="generate-panel">
-      <div className="gen-tier-row">
-        <button
-          type="button"
-          className={`gen-tier-btn${tier === 'fast' ? ' gen-tier-btn--active' : ''}`}
-          onClick={() => setTier('fast')}
-        >
-          ⚡ Fast
-          <span className="gen-tier-sub">edit-loop preview</span>
-        </button>
-        <button
-          type="button"
-          className={`gen-tier-btn${tier === 'quality' ? ' gen-tier-btn--active' : ''}`}
-          onClick={() => setTier('quality')}
-        >
-          🎙 Quality
-          <span className="gen-tier-sub">ship voice</span>
-        </button>
-      </div>
-
-      <div className="gen-template-info">
-        Using template: <strong>{template?.name || '(default)'}</strong>
-        <span className="gen-template-meta">
-          {template?.engine} · {template?.voice}
-          {template?.speed != null && ` · ${template.speed}×`}
-        </span>
-        {!defaultsForTier && (
-          <span className="gen-template-warn">No default set for {tier} — using fallback.</span>
+      <div className="queue-template-picker">
+        {templates.length === 0 && (
+          <div className="queue-template-empty">
+            No voice templates yet. Open the ⚙ in the topbar to create one.
+          </div>
         )}
+        {templates.map((t) => {
+          const isActive = t.id === selectedTemplateId
+          const isDefaultFast = defaults.fast === t.id
+          const isDefaultQuality = defaults.quality === t.id
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={`queue-template-card${isActive ? ' queue-template-card--active' : ''}`}
+              onClick={() => setSelectedTemplateId(t.id)}
+              title={t.notes || ''}
+            >
+              <div className="queue-template-card-row">
+                <span className={`vts-tier vts-tier--${t.tier}`}>
+                  {t.tier === 'fast' ? '⚡' : '🎙'} {t.tier}
+                </span>
+                <span className="queue-template-card-name">{t.name}</span>
+                {(isDefaultFast || isDefaultQuality) && (
+                  <span className="queue-template-default" title={`Default for ${isDefaultFast ? 'Fast' : 'Quality'}`}>★</span>
+                )}
+              </div>
+              <div className="queue-template-card-meta">
+                {t.engine} · {t.voice}
+                {t.speed != null && ` · ${t.speed}×`}
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       <label className="gen-force-check">
@@ -208,7 +225,7 @@ function SimpleGenerateForm({ chapter, onGenerate }) {
         Generate audio
       </button>
       <p className="gen-template-hint">
-        To edit voices, knobs, or change the default for Fast/Quality, open the ⚙ in the topbar.
+        To edit voices, knobs, or change the defaults, open the ⚙ in the topbar.
       </p>
     </div>
   )
