@@ -283,6 +283,143 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   flex-wrap: wrap;
 }
 
+/* ── Phase E inline sentence editor + stale-edit indicator ─────────────── */
+.sentence-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 115;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: phaseDToastIn 120ms ease-out;
+}
+.sentence-edit {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+  padding: 22px 24px 18px;
+  max-width: 640px;
+  width: calc(100vw - 48px);
+  font-family: var(--font);
+}
+.sentence-edit-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.sentence-edit-chunk {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.sentence-edit-original {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid var(--text-muted);
+  border-radius: 0 4px 4px 0;
+}
+.sentence-edit-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.sentence-edit-text {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.sentence-edit-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 11px 13px;
+  resize: vertical;
+}
+.sentence-edit-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.sentence-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sentence-edit-btn {
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.sentence-edit-btn:hover { border-color: var(--text-dim); }
+.sentence-edit-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.sentence-edit-btn--primary:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+}
+.sentence-edit-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.sentence-edit-btn--ghost:hover {
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+.sentence-edit-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+/* Stale margin indicator on paragraphs containing pending edits.
+   Subtle amber left rule that catches the eye when scanning the chapter. */
+.markdown-body p.has-pending-edit,
+.markdown-body li.has-pending-edit,
+.markdown-body blockquote.has-pending-edit {
+  border-left: 3px solid #e8a040 !important;
+  background: rgba(232, 160, 64, 0.04);
+}
+
 /* ── Phase D splash — pick-up-where-you-left-off dialog ────────────────── */
 .resume-splash-backdrop {
   position: fixed;

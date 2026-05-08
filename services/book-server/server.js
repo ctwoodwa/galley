@@ -682,6 +682,58 @@ app.get('/api/books/:bookId/chapters/:id/alignment', (req, res) => {
   }
 })
 
+// ── Phase E: sentence-level edits ─────────────────────────────────────────
+// Append-only JSONL log of pending sentence edits per chapter. The actual
+// re-render orchestration happens in Phase F (stale audio playback) +
+// Phase H (render-now vs queued). For now the edit gets persisted and the
+// chunk is marked stale; the frontend's amber margin dot reflects that.
+app.post('/api/books/:bookId/chapters/:id/sentence-edit', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const chapter = data.chapters.find(c => c.id === req.params.id)
+  if (!chapter) return res.status(404).json({ error: 'Chapter not found' })
+  const { chunk_id, new_text, tier, prev_text } = req.body || {}
+  if (!chunk_id || typeof new_text !== 'string') {
+    return res.status(400).json({ error: 'chunk_id and new_text required' })
+  }
+  const editsDir = path.join(bookBuildDir(req.params.bookId), 'pending-edits')
+  fs.mkdirSync(editsDir, { recursive: true })
+  const editLog = path.join(editsDir, `${chapter.slug}.jsonl`)
+  const event = {
+    ts: new Date().toISOString(),
+    chapter_slug: chapter.slug,
+    chunk_id,
+    new_text,
+    prev_text: prev_text ?? null,
+    tier: tier === 'fast' ? 'fast' : 'quality',
+  }
+  try {
+    fs.appendFileSync(editLog, JSON.stringify(event) + '\n')
+    res.json({ ok: true, event })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.get('/api/books/:bookId/chapters/:id/sentence-edits', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const chapter = data.chapters.find(c => c.id === req.params.id)
+  if (!chapter) return res.status(404).json({ error: 'Chapter not found' })
+  const editLog = path.join(bookBuildDir(req.params.bookId), 'pending-edits', `${chapter.slug}.jsonl`)
+  if (!fs.existsSync(editLog)) return res.json([])
+  try {
+    const lines = fs.readFileSync(editLog, 'utf8').trim().split('\n').filter(Boolean)
+    const events = lines.map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean)
+    // Latest edit per chunk_id wins.
+    const latest = new Map()
+    for (const e of events) latest.set(e.chunk_id, e)
+    res.json([...latest.values()])
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 app.get('/api/books/:bookId/chapters/:id/render-defaults', (req, res) => {
   const data = getBook(req.params.bookId)
   if (!data) return res.status(404).json({ error: 'Book not found' })

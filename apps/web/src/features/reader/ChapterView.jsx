@@ -274,6 +274,10 @@ export default function ChapterView({
   // Three options: Resume from saved sentence · From start · Just browse.
   const [splashOpen, setSplashOpen] = useState(false)
   const [splashSentence, setSplashSentence] = useState(null) // { idx, total, text, t }
+  // Phase E: inline sentence edit. {chunk_id, original_text, draft_text}|null
+  const [sentenceEdit, setSentenceEdit] = useState(null)
+  // Phase E: chunk_ids that have pending edits — drives the amber margin dot.
+  const [staleChunkIds, setStaleChunkIds] = useState(new Set())
 
   // ── Chapter-level (overall) note form ───────────────────────────────────
   const [showNoteForm, setShowNoteForm] = useState(false)
@@ -343,6 +347,11 @@ export default function ChapterView({
       setAlignedChunks(alignData?.chunks || null)
       setAlignmentStale(alignData?.stale || false)
       setLoading(false)
+      // Phase E: load pending sentence edits to drive stale margin dots.
+      fetch(`/api/books/${bookId}/chapters/${chapter.id}/sentence-edits`)
+        .then(r => r.ok ? r.json() : [])
+        .then(edits => setStaleChunkIds(new Set(edits.map(e => e.chunk_id))))
+        .catch(() => setStaleChunkIds(new Set()))
 
       // Phase D splash decision — only open if we have a meaningful saved
       // position (>30s into the chapter) AND alignment data so we can map
@@ -583,8 +592,11 @@ export default function ChapterView({
     for (const [el, info] of byEl.entries()) {
       el.dataset.chunkIds = info.ids.join(',')
       el.dataset.firstChunkStart = String(info.starts[0])
+      // Phase E: amber dot when any chunk in this paragraph has a pending edit.
+      const hasStale = info.ids.some(id => staleChunkIds.has(id))
+      el.classList.toggle('has-pending-edit', hasStale)
     }
-  }, [alignedChunks, content, loading])
+  }, [alignedChunks, content, loading, staleChunkIds])
 
   // ── Phase D: splash handlers ──────────────────────────────────────────
 
@@ -752,14 +764,79 @@ export default function ChapterView({
     markForReview,
   }
 
+  // ── Phase E: open inline edit on Alt+click of a sentence ──────────────
+
+  const openSentenceEdit = useCallback((chunkId, originalText) => {
+    setSentenceEdit({ chunk_id: chunkId, original_text: originalText, draft_text: originalText })
+    // Pause audio while the editor is open — focus pauses listening.
+    const audio = playerRef.current?.audio?.()
+    if (audio && !audio.paused) audio.pause()
+  }, [])
+
+  const cancelSentenceEdit = useCallback(() => setSentenceEdit(null), [])
+
+  const commitSentenceEdit = useCallback(async (tier = 'quality') => {
+    const edit = sentenceEdit
+    if (!edit) return
+    const trimmed = (edit.draft_text || '').trim()
+    if (!trimmed || trimmed === edit.original_text.trim()) {
+      // No-op — nothing to commit.
+      setSentenceEdit(null)
+      return
+    }
+    try {
+      const r = await fetch(`/api/books/${bookId}/chapters/${chapter.id}/sentence-edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chunk_id: edit.chunk_id,
+          new_text: trimmed,
+          prev_text: edit.original_text,
+          tier,
+        }),
+      })
+      if (!r.ok) throw new Error('Failed to save edit')
+      setStaleChunkIds(prev => new Set(prev).add(edit.chunk_id))
+      setSentenceEdit(null)
+      showPhaseDToast(`✎ Edit committed (${tier} render queued)`)
+    } catch (err) {
+      showPhaseDToast(`Edit failed: ${err.message}`)
+    }
+  }, [sentenceEdit, bookId, chapter.id, showPhaseDToast])
+
   // ── Phase B: click-to-localize on a sentence/paragraph ────────────────
 
   const handleContentClick = useCallback((e) => {
     if (!alignedChunks || !chunkMapRef.current.length) return
-    // Sentence-level: if click target is inside a .tts-sent (already wrapped
-    // during playback), prefer that. Paragraph-level fallback otherwise.
+
+    // Phase E: Alt+click (or ⌥-click on Mac) opens the inline editor for the
+    // sentence under the click. Plain click stays as the play-from-here gesture.
     const sentEl = e.target.closest('.tts-sent')
     const paraEl = e.target.closest('[data-chunk-ids]')
+    if ((sentEl || paraEl) && e.altKey) {
+      e.preventDefault()
+      if (sentEl && paraEl) {
+        const wanted = normText(sentEl.textContent)
+        let best = null, bestScore = 0
+        for (const entry of chunkMapRef.current) {
+          if (entry.element !== paraEl) continue
+          const score = scoreMatch(entry.source_text || entry.text || '', wanted)
+          if (score > bestScore) { bestScore = score; best = entry }
+        }
+        if (best) {
+          openSentenceEdit(best.chunk_id, best.source_text || best.text || sentEl.textContent || '')
+          return
+        }
+      }
+      // Paragraph-level fallback — open the first chunk of that paragraph.
+      const ids = (paraEl?.dataset.chunkIds || '').split(',').filter(Boolean)
+      const first = chunkMapRef.current.find(c => ids.includes(c.chunk_id) && !c.is_pause)
+      if (first) {
+        openSentenceEdit(first.chunk_id, first.source_text || first.text || paraEl.textContent.slice(0, 200))
+      }
+      return
+    }
+
     if (!sentEl && !paraEl) return
     if (!playerRef.current) return
 
@@ -1123,6 +1200,74 @@ export default function ChapterView({
         chapterSlug={chapter.slug}
         onCommentAdded={onCommentAdded}
       />
+
+      {/* Phase E inline sentence editor — pause + textarea + tier-aware commit */}
+      {sentenceEdit && (
+        <div className="sentence-edit-backdrop" onClick={cancelSentenceEdit} aria-hidden="true">
+          <div
+            className="sentence-edit"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sentence-edit-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div id="sentence-edit-title" className="sentence-edit-title">
+              ✎ Edit sentence
+              <span className="sentence-edit-chunk">chunk {sentenceEdit.chunk_id}</span>
+            </div>
+            <div className="sentence-edit-original">
+              <span className="sentence-edit-label">Was</span>
+              <div className="sentence-edit-text">{sentenceEdit.original_text}</div>
+            </div>
+            <textarea
+              autoFocus
+              className="sentence-edit-textarea"
+              rows={4}
+              value={sentenceEdit.draft_text}
+              onChange={(e) => setSentenceEdit(s => s ? { ...s, draft_text: e.target.value } : s)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  cancelSentenceEdit()
+                } else if ((e.key === 'Enter' || e.key === '↵') && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault()
+                  void commitSentenceEdit('quality')
+                }
+              }}
+            />
+            <div className="sentence-edit-actions">
+              <button
+                type="button"
+                className="sentence-edit-btn sentence-edit-btn--primary"
+                onClick={() => commitSentenceEdit('quality')}
+                title="Commit + queue Quality render (⌘↵)"
+              >
+                ⌘↵ Commit · Quality
+              </button>
+              <button
+                type="button"
+                className="sentence-edit-btn"
+                onClick={() => commitSentenceEdit('fast')}
+                title="Commit + queue Fast render (preview voice)"
+              >
+                Commit · Fast
+              </button>
+              <button
+                type="button"
+                className="sentence-edit-btn sentence-edit-btn--ghost"
+                onClick={cancelSentenceEdit}
+                title="Discard (Esc)"
+              >
+                Esc Cancel
+              </button>
+            </div>
+            <p className="sentence-edit-hint">
+              Edits append to the chapter's pending-edits log. Audio will keep playing the
+              old render until the queued regen completes (Phase F+).
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Phase D toast — confirms R/B keyboard actions */}
       {phaseDToast && (
