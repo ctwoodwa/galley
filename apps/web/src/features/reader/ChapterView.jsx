@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { marked } from 'marked'
 import AudioPlayer from '../audio-player/AudioPlayer.jsx'
+import SentenceNavBar from './SentenceNavBar.jsx'
 import GeneratePanel from '../tts/GeneratePanel.jsx'
 import AudioMeta from '../audio-player/AudioMeta.jsx'
 import CommentToolbar from '../annotations/CommentToolbar.jsx'
@@ -837,10 +838,27 @@ export default function ChapterView({
             </button>
           </div>
         )}
+        <SentenceNavBar
+          alignedChunks={alignedChunks}
+          playerRef={playerRef}
+          onPrevSentence={() => seekRelativeSentence(-1)}
+          onNextSentence={() => seekRelativeSentence(1)}
+          onPrevParagraph={() => seekRelativeParagraph(-1)}
+          onNextParagraph={() => seekRelativeParagraph(1)}
+        />
         <div className="player-shortcuts">
           <span><kbd>Space</kbd> play/pause</span>
-          <span><kbd>←</kbd><kbd>→</kbd> ±10s</span>
-          <span><kbd>Shift</kbd>+<kbd>←→</kbd> ±30s</span>
+          {alignedChunks ? (
+            <>
+              <span><kbd>←</kbd><kbd>→</kbd> ±1 sentence</span>
+              <span><kbd>Shift</kbd>+<kbd>←→</kbd> ±1 paragraph</span>
+            </>
+          ) : (
+            <>
+              <span><kbd>←</kbd><kbd>→</kbd> ±10s</span>
+              <span><kbd>Shift</kbd>+<kbd>←→</kbd> ±30s</span>
+            </>
+          )}
           <span><kbd>↑</kbd><kbd>↓</kbd> volume</span>
           {alignmentStale && (
             <span className="align-stale-warn" title="Audio was regenerated after alignment was built — re-run audiobook.py --force to fix sync">
