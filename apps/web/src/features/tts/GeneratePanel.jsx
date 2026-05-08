@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
+import { templateToRenderConfig } from '@/lib/voice-templates'
 
 const KOKORO_PRESETS = ['male', 'male-solo', 'female', 'female-solo', 'sinek', 'practitioner', 'british', 'fenrir', 'au']
 const CHATTERBOX_PRESETS = ['male', 'female-solo', 'broom_salesman', 'sinek', 'practitioner', 'british', 'fenrir', 'fry', 'ciufi-galeazzi']
@@ -96,20 +98,9 @@ export default function GeneratePanel({ bookId, chapter, onGenerated }) {
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const handleGenerate = async () => {
-    const body = { chapter_id: chapter.id, engine: config.engine, preset: config.preset }
-    if (config.voice)          body.voice = config.voice
-    if (config.speed)          body.speed = parseFloat(config.speed)
-    if (config.base_url)       body.base_url = config.base_url
-    if (config.api_key)        body.api_key = config.api_key
-    if (config.force)          body.force = true
-    if (config.per_sentence)   body.per_sentence = true
-    if (config.no_chapter_map) body.no_chapter_map = true
-    if (config.engine === 'chatterbox') {
-      if (config.exaggeration) body.exaggeration = parseFloat(config.exaggeration)
-      if (config.cfg_weight)   body.cfg_weight   = parseFloat(config.cfg_weight)
-      if (config.temperature)  body.temperature  = parseFloat(config.temperature)
-    }
+  // Driven by the SimpleGenerateForm below — receives a config payload built
+  // from the user's chosen voice template + Fast/Quality tier.
+  const runGenerate = async (body) => {
     try {
       const res = await fetch(`/api/books/${bookId}/generate`, {
         method: 'POST',
@@ -158,91 +149,67 @@ export default function GeneratePanel({ bookId, chapter, onGenerated }) {
     )
   }
 
+  return <SimpleGenerateForm chapter={chapter} onGenerate={runGenerate} />
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Simplified Fast / Quality form. Voice/engine/knobs come from the user's
+// voice templates (see /lib/voice-templates.js + the gear-icon settings).
+function SimpleGenerateForm({ chapter, onGenerate }) {
+  const { defaults, templates, forTier } = useVoiceTemplates()
+  const [tier, setTier] = useState('quality')
+  const [force, setForce] = useState(false)
+  const template = forTier(tier)
+  const defaultsForTier = templates.find((t) => t.id === defaults[tier])
+
+  const handle = () => {
+    const cfg = templateToRenderConfig(template)
+    onGenerate({ ...cfg, force, chapter_id: chapter.id })
+  }
+
   return (
     <div className="generate-panel">
-      {defaultSource && (
-        <div className="defaults-badge">
-          Defaults <span className="defaults-source">{SOURCE_LABELS[defaultSource] ?? defaultSource}</span>
-        </div>
-      )}
-
-      <div className="gen-config">
-        <div className="config-row">
-          <label>Engine</label>
-          <select value={config.engine} onChange={e => set('engine', e.target.value)}>
-            <option value="kokoro">Kokoro (local Docker)</option>
-            <option value="chatterbox">Chatterbox (Windows GPU)</option>
-          </select>
-        </div>
-
-        <div className="config-row">
-          <label>Preset</label>
-          <select value={config.preset} onChange={e => set('preset', e.target.value)}>
-            {presets.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
-
-        <button className="advanced-toggle" onClick={() => setShowAdvanced(v => !v)}>
-          {showAdvanced ? '▲' : '▼'} Advanced options
+      <div className="gen-tier-row">
+        <button
+          type="button"
+          className={`gen-tier-btn${tier === 'fast' ? ' gen-tier-btn--active' : ''}`}
+          onClick={() => setTier('fast')}
+        >
+          ⚡ Fast
+          <span className="gen-tier-sub">edit-loop preview</span>
         </button>
+        <button
+          type="button"
+          className={`gen-tier-btn${tier === 'quality' ? ' gen-tier-btn--active' : ''}`}
+          onClick={() => setTier('quality')}
+        >
+          🎙 Quality
+          <span className="gen-tier-sub">ship voice</span>
+        </button>
+      </div>
 
-        {showAdvanced && (
-          <div className="advanced-options">
-            <div className="config-row">
-              <label>Voice override</label>
-              <input type="text" placeholder="e.g. broom_salesman" value={config.voice}
-                onChange={e => set('voice', e.target.value)} />
-            </div>
-
-            <div className="config-row">
-              <label>Speed <span className="hint">0.5–2.0</span></label>
-              <input type="number" min="0.5" max="2.0" step="0.05" placeholder="1.0"
-                value={config.speed} onChange={e => set('speed', e.target.value)} />
-            </div>
-
-            {config.engine === 'chatterbox' && (<>
-              <div className="config-row">
-                <label>Exaggeration <span className="hint">0.0–1.5</span></label>
-                <input type="number" min="0" max="1.5" step="0.05" placeholder="0.7"
-                  value={config.exaggeration} onChange={e => set('exaggeration', e.target.value)} />
-              </div>
-              <div className="config-row">
-                <label>Cfg weight <span className="hint">0.1–1.0</span></label>
-                <input type="number" min="0.1" max="1.0" step="0.05" placeholder="0.3"
-                  value={config.cfg_weight} onChange={e => set('cfg_weight', e.target.value)} />
-              </div>
-              <div className="config-row">
-                <label>Temperature <span className="hint">0.0–2.0</span></label>
-                <input type="number" min="0" max="2.0" step="0.1" placeholder="1.0"
-                  value={config.temperature} onChange={e => set('temperature', e.target.value)} />
-              </div>
-              <div className="config-row">
-                <label>Base URL</label>
-                <input type="text" placeholder="http://host:8883/api/v1"
-                  value={config.base_url} onChange={e => set('base_url', e.target.value)} />
-              </div>
-              <div className="config-row">
-                <label>API key</label>
-                <input type="password" placeholder="Bearer token"
-                  value={config.api_key} onChange={e => set('api_key', e.target.value)} />
-              </div>
-            </>)}
-
-            <div className="config-checks">
-              <label><input type="checkbox" checked={config.force}
-                onChange={e => set('force', e.target.checked)} /> Force re-render</label>
-              <label><input type="checkbox" checked={config.per_sentence}
-                onChange={e => set('per_sentence', e.target.checked)} /> Per-sentence mode</label>
-              <label><input type="checkbox" checked={config.no_chapter_map}
-                onChange={e => set('no_chapter_map', e.target.checked)} /> No chapter map</label>
-            </div>
-          </div>
+      <div className="gen-template-info">
+        Using template: <strong>{template?.name || '(default)'}</strong>
+        <span className="gen-template-meta">
+          {template?.engine} · {template?.voice}
+          {template?.speed != null && ` · ${template.speed}×`}
+        </span>
+        {!defaultsForTier && (
+          <span className="gen-template-warn">No default set for {tier} — using fallback.</span>
         )}
       </div>
 
-      <button className="gen-button" onClick={handleGenerate}>
-        Generate Audio
+      <label className="gen-force-check">
+        <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
+        Force re-render (ignore cache)
+      </label>
+
+      <button className="gen-button" onClick={handle}>
+        Generate audio
       </button>
+      <p className="gen-template-hint">
+        To edit voices, knobs, or change the default for Fast/Quality, open the ⚙ in the topbar.
+      </p>
     </div>
   )
 }

@@ -4,6 +4,7 @@ import ChapterList from '../../features/chapter-browser/ChapterList.jsx'
 import QueuePanel from '../../features/render-queue/QueuePanel.jsx'
 import ReviewPanel from '../../features/review-sessions/ReviewPanel.jsx'
 import LogPanel from '../../features/build-logs/LogPanel.jsx'
+import VoiceTemplatesSettings from '../../features/voice-templates/VoiceTemplatesSettings.jsx'
 
 const SIDEBAR_MIN     = 180
 const SIDEBAR_MAX     = 520
@@ -33,6 +34,7 @@ export default function AppLayout() {
   const [loading, setLoading]                 = useState(true)
   // Drawer overlays — null when none open. Reader stays visible behind.
   const [activePanel, setActivePanel]         = useState(null)
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false)
   const togglePanel = useCallback((name) => {
     setActivePanel((cur) => (cur === name ? null : name))
   }, [])
@@ -212,6 +214,13 @@ export default function AppLayout() {
             onClick={() => setActivePanel(null)}
             title="Hide all overlay panels"
           >Read</button>
+          <button
+            type="button"
+            className="topbar-gear"
+            onClick={() => setVoiceSettingsOpen(true)}
+            title="Voice template settings"
+            aria-label="Voice templates"
+          >⚙</button>
           <TopbarMenu
             activePanel={activePanel}
             togglePanel={togglePanel}
@@ -251,6 +260,11 @@ export default function AppLayout() {
           )}
         </>
       )}
+
+      <VoiceTemplatesSettings
+        open={voiceSettingsOpen}
+        onClose={() => setVoiceSettingsOpen(false)}
+      />
 
       {/* Topbar hamburger menu defined in this file so it has direct access
           to togglePanel + counts; not worth a separate file at this size. */}
