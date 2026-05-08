@@ -1,31 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { SortableQueueList } from './SortableQueueList'
-
-const KOKORO_PRESETS = ['male', 'male-solo', 'female', 'female-solo', 'sinek', 'practitioner', 'british', 'fenrir', 'au']
-const CHATTERBOX_PRESETS = ['male', 'female-solo', 'broom_salesman', 'sinek', 'practitioner', 'british', 'fenrir', 'fry', 'ciufi-galeazzi']
+import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
+import { templateToRenderConfig } from '@/lib/voice-templates'
 
 const PANEL_MIN = 340
 const PANEL_MAX = 720
 const PANEL_DEFAULT = 420
 const PANEL_WIDTH_KEY = 'queue-panel-width'
 
-function presetToVoiceKey(preset) {
-  return preset || ''
-}
-
 export default function QueuePanel({ chapters, queue, onClose, inline = false }) {
-  const [engine, setEngine] = useState('chatterbox')
-  const [preset, setPreset] = useState('ciufi-galeazzi')
-  const [voiceKey, setVoiceKey] = useState('ciufi-galeazzi')
+  // Render-config now comes from the user's voice template for the chosen tier.
+  // Per-form engine/preset/voice/speed/exaggeration/cfg/temperature inputs
+  // removed; user manages those at the topbar ⚙ → Voice Templates settings.
+  const { forTier, templates, defaults } = useVoiceTemplates()
+  const [tier, setTier] = useState('quality')
   const [replacePrimary, setReplacePrimary] = useState(false)
-  const [speed, setSpeed] = useState('')
-  const [perSentence, setPerSentence] = useState(true)
   const [forceRender, setForceRender] = useState(true)
-  const [baseUrl, setBaseUrl] = useState('')
-  const [apiKey, setApiKey] = useState('')
   const [selectedChapters, setSelectedChapters] = useState(new Set())
   const [chapterFilter, setChapterFilter] = useState('all')
   const [volumeTab, setVolumeTab] = useState('vol-1')
+
+  const template = forTier(tier)
+  const hasDefault = !!templates.find((t) => t.id === defaults[tier])
 
   const [activeLog, setActiveLog] = useState('')
   const logPollRef = useRef(null)
@@ -69,15 +65,8 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
     }
   }, [])
 
-  const presets = engine === 'chatterbox' ? CHATTERBOX_PRESETS : KOKORO_PRESETS
-
-  useEffect(() => { setVoiceKey(presetToVoiceKey(preset)) }, [preset])
-
-  useEffect(() => {
-    setPreset(engine === 'chatterbox' ? 'ciufi-galeazzi' : 'male')
-    setForceRender(engine === 'chatterbox')
-    setPerSentence(engine === 'chatterbox')
-  }, [engine])
+  // (engine/preset/voice/speed/perSentence/exaggeration/cfg_weight/temperature
+  //  state previously lived here — moved to voice-template settings.)
 
   useEffect(() => {
     if (logPollRef.current) clearInterval(logPollRef.current)
@@ -125,18 +114,14 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
 
   const handleAddToQueue = async () => {
     if (selectedChapters.size === 0) return
-    const outputSuffix = replacePrimary ? '' : (voiceKey ? `--${voiceKey}` : '')
+    const cfg = templateToRenderConfig(template)
+    const voiceForSuffix = template?.voice || ''
+    const outputSuffix = replacePrimary ? '' : (voiceForSuffix ? `--${voiceForSuffix}` : '')
     const items = [...selectedChapters].map(chapter_id => ({
       chapter_id,
       options: {
-        engine,
-        preset,
-        voice: voiceKey || undefined,
-        speed: speed ? parseFloat(speed) : undefined,
-        per_sentence: perSentence || undefined,
+        ...cfg,
         force: forceRender || undefined,
-        base_url: baseUrl || undefined,
-        api_key: apiKey || undefined,
         output_suffix: outputSuffix || undefined,
       },
     }))
@@ -267,51 +252,48 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
       {/* ── Stage for Rendering — fills remaining space ───────────────────── */}
       <div className="queue-add-section">
 
-        {/* Options form */}
+        {/* Options form — Fast/Quality picker (engine/voice/knobs come from
+            the user's voice template for the chosen tier; manage at ⚙). */}
         <div className="queue-add-form">
           <div className="queue-section-label" style={{ padding: '10px 16px 0' }}>Stage for Rendering</div>
           <div style={{ padding: '8px 16px 0' }}>
-            <div className="queue-form-row">
-              <label>Engine</label>
-              <select value={engine} onChange={e => setEngine(e.target.value)}>
-                <option value="kokoro">Kokoro</option>
-                <option value="chatterbox">Chatterbox</option>
-              </select>
+            <div className="gen-tier-row">
+              <button
+                type="button"
+                className={`gen-tier-btn${tier === 'fast' ? ' gen-tier-btn--active' : ''}`}
+                onClick={() => setTier('fast')}
+              >
+                ⚡ Fast
+                <span className="gen-tier-sub">edit-loop preview</span>
+              </button>
+              <button
+                type="button"
+                className={`gen-tier-btn${tier === 'quality' ? ' gen-tier-btn--active' : ''}`}
+                onClick={() => setTier('quality')}
+              >
+                🎙 Quality
+                <span className="gen-tier-sub">ship voice</span>
+              </button>
             </div>
-            <div className="queue-form-row">
-              <label>Preset</label>
-              <select value={preset} onChange={e => setPreset(e.target.value)}>
-                {presets.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
+            <div className="gen-template-info">
+              Using template: <strong>{template?.name || '(default)'}</strong>
+              <span className="gen-template-meta">
+                {template?.engine} · {template?.voice}
+                {template?.speed != null && ` · ${template.speed}×`}
+              </span>
+              {!hasDefault && (
+                <span className="gen-template-warn">No default set for {tier} — using fallback.</span>
+              )}
             </div>
-            <div className="queue-form-row">
-              <label>Voice key</label>
-              <input type="text" value={voiceKey} onChange={e => setVoiceKey(e.target.value)}
-                placeholder="output suffix (e.g. ciufi-galeazzi)" />
-            </div>
-            <div className="queue-form-row">
-              <label>Speed</label>
-              <input type="number" min="0.5" max="2.0" step="0.05"
-                placeholder="1.0" value={speed} onChange={e => setSpeed(e.target.value)} />
-            </div>
-            {engine === 'chatterbox' && (
-              <>
-                <div className="queue-form-row">
-                  <label>Base URL</label>
-                  <input type="text" placeholder="http://host:8883/api/v1"
-                    value={baseUrl} onChange={e => setBaseUrl(e.target.value)} />
-                </div>
-                <div className="queue-form-row">
-                  <label>API key</label>
-                  <input type="password" placeholder="Bearer token"
-                    value={apiKey} onChange={e => setApiKey(e.target.value)} />
-                </div>
-              </>
-            )}
             <div className="queue-form-checks">
-              <label><input type="checkbox" checked={replacePrimary} onChange={e => setReplacePrimary(e.target.checked)} />Replace primary (no suffix)</label>
-              <label><input type="checkbox" checked={perSentence}    onChange={e => setPerSentence(e.target.checked)} />Per-sentence mode</label>
-              <label><input type="checkbox" checked={forceRender}    onChange={e => setForceRender(e.target.checked)} />Force re-render</label>
+              <label>
+                <input type="checkbox" checked={replacePrimary} onChange={e => setReplacePrimary(e.target.checked)} />
+                Replace primary (no suffix)
+              </label>
+              <label>
+                <input type="checkbox" checked={forceRender} onChange={e => setForceRender(e.target.checked)} />
+                Force re-render
+              </label>
             </div>
           </div>
         </div>
