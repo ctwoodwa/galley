@@ -494,7 +494,9 @@ function processNextInQueue() {
   item.status = 'running'
   item.started_at = new Date().toISOString()
   activeQueueItem = item
-  broadcast('queue-updated', serializeQueue())
+  // Don't broadcast yet — wait until job_id is attached so the frontend's
+  // log poll has something to subscribe to. Without this, the active item
+  // gets broadcast with job_id=undefined and the live log never appears.
   try {
     const job = startGeneration(item.chapter_id, item.options, (finishedJob) => {
       item.status = finishedJob.status
@@ -508,6 +510,9 @@ function processNextInQueue() {
       processNextInQueue()
     })
     item.job_id = job.id
+    // NOW broadcast — active item carries job_id so the frontend can poll
+    // /api/jobs/<job_id>/log every 2s and surface the live render output.
+    broadcast('queue-updated', serializeQueue())
   } catch (e) {
     item.status = 'failed'
     item.error = e.message
