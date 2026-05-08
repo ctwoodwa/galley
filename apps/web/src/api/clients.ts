@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { TTSClient, ImageClient, MusicClient } from '@galley/api-client'
+import { TTSClient, ImageClient, MusicClient, SttClient } from '@galley/api-client'
 import { useApiConfig } from './config'
 
 /**
@@ -23,4 +23,10 @@ export function useMusicClient() {
   const baseUrl = useApiConfig((s) => s.baseUrl)
   const apiKey = useApiConfig((s) => s.apiKey)
   return useMemo(() => new MusicClient(baseUrl, apiKey), [baseUrl, apiKey])
+}
+
+export function useSttClient() {
+  const baseUrl = useApiConfig((s) => s.baseUrl)
+  const apiKey = useApiConfig((s) => s.apiKey)
+  return useMemo(() => new SttClient(baseUrl, apiKey), [baseUrl, apiKey])
 }

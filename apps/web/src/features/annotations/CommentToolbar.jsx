@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { DictationButton } from '@/components/dictation/DictationButton'
 
 const TYPES = [
   { key: 'edit',     label: 'Edit' },
@@ -190,6 +191,12 @@ export default function CommentToolbar({ bookId, chapterId, chapterTitle, chapte
             <button className="cmt-cancel-btn" onClick={handleCancel}>
               Cancel
             </button>
+            <DictationButton
+              onTranscribe={(text) =>
+                setInputValue(prev => (prev ? prev.replace(/\s*$/, '') + ' ' + text : text))
+              }
+              onError={(err) => console.error('[dictation]', err)}
+            />
           </div>
         </div>
       )}
