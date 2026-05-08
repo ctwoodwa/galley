@@ -176,7 +176,7 @@ function extractTitle(stem, filePath) {
 function buildCatalog(book) {
   const { bookRoot, volumes = [] } = book
   const chaptersDir = path.join(bookRoot, 'chapters')
-  const audioDir    = path.join(bookRoot, 'build', 'output', 'audiobook')
+  const audioDir    = GALLEY_AUDIO_DIR
 
   const volIds = volumes.map(v => v.id)
 
@@ -251,16 +251,30 @@ function buildCatalog(book) {
   return chapters
 }
 
+// ── Galley build root (cache + drafts + alignments + logs live here) ──────
+// Per architectural decision 2026-05-08 — drafts and intermediate artifacts
+// live in galley; only on user-approved release does the book repo receive
+// the finalized epub/m4b. Override via env vars for non-default deployments.
+const GALLEY_BUILD_ROOT = process.env.GALLEY_BUILD_ROOT
+  || path.join(__dirname, '..', '..', 'build')
+const GALLEY_BUILD_OUT  = process.env.GALLEY_BUILD_OUT
+  || path.join(GALLEY_BUILD_ROOT, 'output')
+const GALLEY_AUDIO_DIR  = process.env.GALLEY_AUDIO_DIR
+  || path.join(GALLEY_BUILD_OUT, 'audiobook')
+const GALLEY_ALIGNMENT_DIR = process.env.GALLEY_ALIGNMENT_DIR
+  || path.join(GALLEY_BUILD_ROOT, 'alignments')
+
 // ── Per-book runtime state ────────────────────────────────────────────────────
 
 const bookData = new Map()
 
 function initBook(book) {
   const { id, bookRoot, volumes = [] } = book
-  const audioDir   = path.join(bookRoot, 'build', 'output', 'audiobook')
+  const audioDir   = GALLEY_AUDIO_DIR
   const volIds     = volumes.map(v => v.id)
   const logDir     = path.join(audioDir, '_logs')
   const chaptersDir = path.join(bookRoot, 'chapters')
+  const alignmentDir = GALLEY_ALIGNMENT_DIR
 
   const chapters       = buildCatalog(book)
   const chapterPresetMap = loadChapterPresetMap(bookRoot)
@@ -268,7 +282,7 @@ function initBook(book) {
   const sidecarDefaults  = loadSidecars(audioDir, volIds.length ? volIds : ['vol-1', 'vol-2'])
   const mp3TagDefaults   = loadMp3Tags(audioDir, volIds.length ? volIds : ['vol-1', 'vol-2'])
 
-  const reviewSessionFile = path.join(bookRoot, 'build', 'output', 'review-session.json')
+  const reviewSessionFile = path.join(GALLEY_BUILD_OUT, 'review-session.json')
   let reviewSession
   try {
     reviewSession = fs.existsSync(reviewSessionFile)
@@ -277,7 +291,7 @@ function initBook(book) {
   } catch { reviewSession = newSession() }
 
   bookData.set(id, {
-    book, chaptersDir, audioDir, logDir, volIds,
+    book, chaptersDir, audioDir, alignmentDir, logDir, volIds,
     chapters, chapterPresetMap, manifestDefaults, sidecarDefaults, mp3TagDefaults,
     reviewSession, reviewSessionFile,
     paoInboxDir: path.join(bookRoot, '.pao-inbox'),
@@ -653,7 +667,7 @@ app.get('/api/books/:bookId/chapters/:id/alignment', (req, res) => {
   if (!data) return res.status(404).json({ error: 'Book not found' })
   const chapter = data.chapters.find(c => c.id === req.params.id)
   if (!chapter) return res.status(404).json({ error: 'Chapter not found' })
-  const alignPath = path.join(data.chaptersDir, '_voice-drafts', '_alignments', `${chapter.slug}.json`)
+  const alignPath = path.join(data.alignmentDir, `${chapter.slug}.json`)
   try {
     const alignData = JSON.parse(fs.readFileSync(alignPath, 'utf8'))
     const alignMtime = fs.statSync(alignPath).mtimeMs
