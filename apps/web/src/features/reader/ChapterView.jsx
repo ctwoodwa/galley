@@ -792,15 +792,15 @@ export default function ChapterView({
 
   // Late-bind keyboard-handler ref so the useEffect above (which only sees
   // an empty ref initially) can call into these callbacks without TDZ.
-  // Runs every render — cheap.
+  // Excludes `dict` and `startDictationOnCurrentChunk` — those consts are
+  // declared further down in source order; the second assignment below
+  // (after their declarations) is what wires them.
   keyHandlersRef.current = {
     alignedChunks,
     seekRelativeSentence,
     seekRelativeParagraph,
     repeatCurrentSentence,
     markForReview,
-    dict,
-    startDictationOnCurrentChunk,
   }
 
   // ── Phase E: open inline edit on Alt+click of a sentence ──────────────
@@ -955,6 +955,11 @@ export default function ChapterView({
     dict.start()
     showPhaseDToast(`🎙 Recording — press D again to stop`)
   }, [dict, findCurrentChunkIdx, showPhaseDToast])
+
+  // Second pass — now that dict + startDictationOnCurrentChunk exist, wire
+  // them onto the same ref the keydown listener reads at call time.
+  keyHandlersRef.current.dict = dict
+  keyHandlersRef.current.startDictationOnCurrentChunk = startDictationOnCurrentChunk
 
   // ── Phase B: click-to-localize on a sentence/paragraph ────────────────
 
