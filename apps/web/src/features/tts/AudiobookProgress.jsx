@@ -8,58 +8,81 @@ import { parseAudiobookLog, rateFromHistory } from '@/lib/audiobookProgress'
  * user sees signal first, but can still grab the full output for bug
  * reports / engine debugging.
  */
+// Fields that we expect to see ONCE near the top of audiobook.py's stdout
+// and want to keep displaying even after they scroll out of the polled
+// tail window (e.g. on a 349-sentence render with a 200-line tail, the
+// "=> chapter" + "N sentences, M chars" header lines disappear by ~30%
+// of the way through). Without stickiness the progress bar would vanish
+// mid-run and the card would degrade into just the last-chunk peek.
+const STICKY_FIELDS = [
+  'engine', 'engineDesc', 'baseUrl', 'model',
+  'defaultPreset', 'chapterMap',
+  'chapter', 'chapterFile', 'preset', 'voice', 'speed', 'perSentence',
+  'totalSentences', 'totalChars',
+]
+
 export default function AudiobookProgress({ log, status }) {
   const parsed = useMemo(() => parseAudiobookLog(log), [log])
   const [showRaw, setShowRaw] = useState(false)
 
+  // Sticky high-water-mark for header fields that scroll off the tail.
+  const stickyRef = useRef({})
+  for (const k of STICKY_FIELDS) {
+    if (parsed[k] != null && parsed[k] !== false) stickyRef.current[k] = parsed[k]
+  }
+  const view = { ...parsed }
+  for (const [k, v] of Object.entries(stickyRef.current)) {
+    if (view[k] == null) view[k] = v
+  }
+
   // Track recent (idx, t) samples to estimate sentences/sec → ETA.
   const histRef = useRef([])
   useEffect(() => {
-    if (parsed.lastIdx == null) return
+    if (view.lastIdx == null) return
     const t = Date.now()
     const h = histRef.current
-    if (h.length === 0 || h[h.length - 1].lastIdx !== parsed.lastIdx) {
-      h.push({ lastIdx: parsed.lastIdx, t })
+    if (h.length === 0 || h[h.length - 1].lastIdx !== view.lastIdx) {
+      h.push({ lastIdx: view.lastIdx, t })
       if (h.length > 12) h.splice(0, h.length - 12)
     }
-  }, [parsed.lastIdx])
+  }, [view.lastIdx])
 
   const rate = rateFromHistory(histRef.current)
-  const remaining = (parsed.totalSentences != null && parsed.lastIdx != null)
-    ? parsed.totalSentences - parsed.lastIdx
+  const remaining = (view.totalSentences != null && view.lastIdx != null)
+    ? view.totalSentences - view.lastIdx
     : null
   const etaSec = (rate && remaining != null && remaining > 0) ? Math.round(remaining / rate) : null
   const isRunning = status === 'running'
-  const isDone    = status === 'done' || (parsed.manifestPath && !parsed.crashed)
-  const isCrashed = parsed.crashed || status === 'failed'
+  const isDone    = status === 'done' || (view.manifestPath && !view.crashed)
+  const isCrashed = view.crashed || status === 'failed'
 
-  const pct = parsed.lastPct ?? 0
+  const pct = view.lastPct ?? 0
 
   return (
     <div className={`ap${isCrashed ? ' ap--crashed' : isDone ? ' ap--done' : ''}`}>
 
       {/* Header: engine · voice · speed */}
       <div className="ap-head">
-        {parsed.engine && <span className="ap-pill ap-pill--engine">{parsed.engine}</span>}
-        {parsed.voice && <span className="ap-pill ap-pill--voice">{parsed.voice}</span>}
-        {parsed.speed != null && <span className="ap-pill">{parsed.speed}×</span>}
-        {parsed.perSentence && <span className="ap-pill ap-pill--mode">per-sentence</span>}
+        {view.engine && <span className="ap-pill ap-pill--engine">{view.engine}</span>}
+        {view.voice && <span className="ap-pill ap-pill--voice">{view.voice}</span>}
+        {view.speed != null && <span className="ap-pill">{view.speed}×</span>}
+        {view.perSentence && <span className="ap-pill ap-pill--mode">per-sentence</span>}
         {isRunning && !isCrashed && <span className="ap-spinner" aria-label="running" />}
       </div>
 
       {/* Chapter file */}
-      {parsed.chapterFile && (
-        <div className="ap-chapter" title={parsed.chapter}>{parsed.chapterFile}</div>
+      {view.chapterFile && (
+        <div className="ap-chapter" title={view.chapter}>{view.chapterFile}</div>
       )}
 
       {/* Progress bar — shown once we have totals */}
-      {parsed.totalSentences != null && (
+      {view.totalSentences != null && (
         <>
           <div className="ap-bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
             <div className="ap-bar-fill" style={{ width: `${pct}%` }} />
           </div>
           <div className="ap-counts">
-            <span>{(parsed.lastIdx ?? 0).toLocaleString()} / {parsed.totalSentences.toLocaleString()}</span>
+            <span>{(view.lastIdx ?? 0).toLocaleString()} / {view.totalSentences.toLocaleString()}</span>
             <span>{pct.toFixed(1)}%</span>
             {etaSec != null && <span className="ap-eta">~{formatEta(etaSec)} left</span>}
           </div>
@@ -67,29 +90,29 @@ export default function AudiobookProgress({ log, status }) {
       )}
 
       {/* Live last-chunk peek */}
-      {parsed.lastKind && (
-        <div className={`ap-current ap-current--${parsed.lastKind}`}>
-          {parsed.lastKind === 'pause' ? `⏸ ${parsed.lastDesc}` : parsed.lastDesc}
-          {parsed.lastDuration != null && <span className="ap-current-t">{parsed.lastDuration.toFixed(1)}s</span>}
+      {view.lastKind && (
+        <div className={`ap-current ap-current--${view.lastKind}`}>
+          {view.lastKind === 'pause' ? `⏸ ${view.lastDesc}` : view.lastDesc}
+          {view.lastDuration != null && <span className="ap-current-t">{view.lastDuration.toFixed(1)}s</span>}
         </div>
       )}
 
       {/* Retries */}
-      {parsed.retries > 0 && !isCrashed && (
+      {view.retries > 0 && !isCrashed && (
         <div className="ap-retries">
-          ⚠ {parsed.retries} retr{parsed.retries === 1 ? 'y' : 'ies'}
-          {parsed.lastRetry && <span className="ap-retry-detail"> — last: {parsed.lastRetry.error.slice(0, 80)}…</span>}
+          ⚠ {view.retries} retr{view.retries === 1 ? 'y' : 'ies'}
+          {view.lastRetry && <span className="ap-retry-detail"> — last: {view.lastRetry.error.slice(0, 80)}…</span>}
         </div>
       )}
 
       {/* Crash tail */}
-      {isCrashed && parsed.crashTail && (
-        <pre className="ap-crash">{parsed.crashTail}</pre>
+      {isCrashed && view.crashTail && (
+        <pre className="ap-crash">{view.crashTail}</pre>
       )}
 
       {/* Done — manifest path */}
-      {isDone && parsed.manifestPath && (
-        <div className="ap-done-line">✓ wrote {parsed.manifestPath}</div>
+      {isDone && view.manifestPath && (
+        <div className="ap-done-line">✓ wrote {view.manifestPath}</div>
       )}
 
       {/* Show / hide raw log */}

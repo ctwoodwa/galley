@@ -86,7 +86,7 @@ export default function GeneratePanel({ bookId, chapter, onGenerated }) {
       try {
         const [jobRes, logRes] = await Promise.all([
           fetch(`/api/jobs/${jobId}`).then(r => r.json()),
-          fetch(`/api/jobs/${jobId}/log?tail=60`).then(r => r.json()),
+          fetch(`/api/jobs/${jobId}/log?tail=500`).then(r => r.json()),
         ])
         setJob(jobRes)
         setLog(logRes.log || '')

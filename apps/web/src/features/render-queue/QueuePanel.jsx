@@ -86,7 +86,7 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
     if (queue.active?.job_id) {
       const poll = async () => {
         try {
-          const r = await fetch(`/api/jobs/${queue.active.job_id}/log?tail=40`)
+          const r = await fetch(`/api/jobs/${queue.active.job_id}/log?tail=500`)
           const d = await r.json()
           setActiveLog(d.log || '')
         } catch {}
