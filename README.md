@@ -75,7 +75,7 @@ pnpm dev
 
 Vite serves `http://localhost:5173`. The book-server starts via Turbo if it's wired into your `turbo.json` dev pipeline; if not, run it separately with `pnpm --filter @galley/book-server dev`.
 
-See [`apps/web/SMOKE-TEST.md`](apps/web/SMOKE-TEST.md) for the URL + API verification checklist.
+See [`docs/SMOKE-TEST.md`](docs/SMOKE-TEST.md) for the URL + API verification checklist, and [`docs/AUDIO-EDITOR-SPEC.md`](docs/AUDIO-EDITOR-SPEC.md) for the audio-first prose editor design + phase plan.
 
 ## Test
 
