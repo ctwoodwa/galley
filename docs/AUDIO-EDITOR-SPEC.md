@@ -20,10 +20,11 @@ the ears do the reading.
 | Undo | Per-edit (each sentence-commit = one undo step) |
 | Stale audio behavior | Play old audio + soft chime; regen runs in background |
 | Edit-while-listening | Pause-on-focus (cursor entering an editable sentence pauses audio) |
-| Edit commit boundary | On blur / Esc / Tab / ⌘↵ — each commit = one undo step + one queued render |
-| Begin-listening flow | Auto-resume to last position; manual play (no auto-play on chapter open) |
-| Mark-for-review queue | Per-chapter sidebar (primary surface); cross-book dashboard later |
+| Edit commit boundary | **Explicit ⌘↵ only** — typing, blur, Esc do NOT commit. ⌘↵ commits + queues render |
+| Begin-listening flow | **Splash with options:** ▶ Resume from sentence X · ▶ From start · ▶ Browse |
+| Mark-for-review queue | **Reuses existing `/review` panel** — flags are short-bodied comments under the hood |
 | Selection while listening | Selection alone does NOT pause; opening textarea / starting to type DOES pause |
+| Stale-audio chime sound | Tone-pitched whoosh (~0.4s, fades). Off-toggleable. |
 
 ## Foundation that already exists
 
@@ -79,7 +80,8 @@ can already do surgical edit-driven regen; galley just needs to drive it.**
 | `⌘ ↵` | Commit the current edit |
 | Click a sentence | Pauses audio, places cursor (or enters edit mode if already focused) |
 | Type a key while edit-cursor in a sentence | Sentence becomes editable; audio paused |
-| `Esc` / `Tab` / blur | Commit current edit, queue regen, audio resume controls |
+| `Esc` | Cancel current edit (revert sentence, no commit) |
+| `Tab` / blur | Move focus, but does NOT commit (unsaved edits remain) |
 | `⌘ Shift D` (global) | Dictate-to-comment on current sentence (uses Phase 11 DictationButton) |
 
 ## Render-now vs queued
@@ -91,7 +93,7 @@ When committing an edit, two paths via the selection floater:
 
 ## Stale audio chime
 
-- Sound: short low Tibetan-bowl ping (~0.4s, fades). Off-toggleable in settings.
+- Sound: tone-pitched whoosh (~0.4s, fades). Off-toggleable in settings.
 - Fires once per stale sentence per playback (no spam during loops).
 - Visual indicator stays on the margin until render lands.
 

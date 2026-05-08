@@ -494,12 +494,69 @@ export default function ChapterView({
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  // ── Chunk map ──────────────────────────────────────────────────────────
+  // ── Chunk map + sentence-click data attributes ────────────────────────
 
   useEffect(() => {
     if (!alignedChunks || !contentRef.current || loading) return
-    chunkMapRef.current = buildChunkMap(alignedChunks, contentRef.current)
+    const map = buildChunkMap(alignedChunks, contentRef.current)
+    chunkMapRef.current = map
+
+    // Phase B: annotate mapped elements with data attrs so click-to-localize
+    // works without a separate index. data-chunk-ids holds a comma-joined
+    // list because multiple chunks may map to the same paragraph element.
+    const byEl = new Map()
+    for (const entry of map) {
+      if (!entry.element) continue
+      const existing = byEl.get(entry.element) || { ids: [], starts: [] }
+      existing.ids.push(entry.chunk_id)
+      existing.starts.push(entry.start_seconds)
+      byEl.set(entry.element, existing)
+    }
+    for (const [el, info] of byEl.entries()) {
+      el.dataset.chunkIds = info.ids.join(',')
+      el.dataset.firstChunkStart = String(info.starts[0])
+    }
   }, [alignedChunks, content, loading])
+
+  // ── Phase B: click-to-localize on a sentence/paragraph ────────────────
+
+  const handleContentClick = useCallback((e) => {
+    if (!alignedChunks || !chunkMapRef.current.length) return
+    // Sentence-level: if click target is inside a .tts-sent (already wrapped
+    // during playback), prefer that. Paragraph-level fallback otherwise.
+    const sentEl = e.target.closest('.tts-sent')
+    const paraEl = e.target.closest('[data-chunk-ids]')
+    if (!sentEl && !paraEl) return
+    if (!playerRef.current) return
+
+    if (sentEl) {
+      // Find the chunk whose source_text is closest to the sentence span text.
+      const wanted = normText(sentEl.textContent)
+      let best = null, bestScore = 0
+      for (const entry of chunkMapRef.current) {
+        if (entry.element !== paraEl) continue
+        const score = scoreMatch(entry.source_text || entry.text || '', wanted)
+        if (score > bestScore) { bestScore = score; best = entry }
+      }
+      const target = best ?? chunkMapRef.current.find(c => c.element === paraEl)
+      if (target?.start_seconds != null) {
+        const audio = playerRef.current.audio?.()
+        if (audio) {
+          audio.currentTime = target.start_seconds
+          audio.pause()
+        }
+      }
+      return
+    }
+
+    // Paragraph fallback (cold-start, before any sentence wrapping happened).
+    const start = parseFloat(paraEl.dataset.firstChunkStart || '0')
+    const audio = playerRef.current.audio?.()
+    if (audio) {
+      audio.currentTime = start
+      audio.pause()
+    }
+  }, [alignedChunks])
 
   // ── Time update — three-layer highlight ───────────────────────────────
 
@@ -744,6 +801,7 @@ export default function ChapterView({
             <div
               ref={contentRef}
               className={`markdown-body${alignedChunks ? ' has-alignment' : ''}`}
+              onClick={handleContentClick}
               dangerouslySetInnerHTML={{ __html: html }}
             />
             <div className="review-margin">

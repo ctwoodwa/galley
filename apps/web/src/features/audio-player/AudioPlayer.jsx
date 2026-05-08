@@ -34,7 +34,8 @@ const AudioPlayer = forwardRef(function AudioPlayer({ bookId, chapter, tracks, o
       const next = Math.max(0, Math.min(1, audio.volume + delta))
       audio.volume = next
       setVolume(next)
-    }
+    },
+    audio: () => audioRef.current,
   }), [playing, loading])
 
   useEffect(() => {
