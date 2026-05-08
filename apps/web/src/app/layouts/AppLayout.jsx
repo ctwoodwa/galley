@@ -212,30 +212,13 @@ export default function AppLayout() {
             onClick={() => setActivePanel(null)}
             title="Hide all overlay panels"
           >Read</button>
-          <button
-            className={`review-toggle${reviewSession.comment_count > 0 ? ' review-toggle--active' : ''}${activePanel === 'review' ? ' queue-toggle--busy' : ''}`}
-            onClick={() => togglePanel('review')}
-          >
-            {reviewSession.comment_count > 0 && (
-              <span className="review-badge">{reviewSession.comment_count}</span>
-            )}
-            Review
-          </button>
-          <button
-            className={`queue-toggle${queueBusy ? ' queue-toggle--busy' : ''}${activePanel === 'queue' ? ' queue-toggle--busy' : ''}`}
-            onClick={() => togglePanel('queue')}
-          >
-            {queueBusy && (
-              <span className="queue-badge">
-                {(queue.staged?.length || 0) + queue.queue.length + (queue.active ? 1 : 0)}
-              </span>
-            )}
-            Queue
-          </button>
-          <button
-            className={`queue-toggle${activePanel === 'logs' ? ' queue-toggle--busy' : ''}`}
-            onClick={() => togglePanel('logs')}
-          >Logs</button>
+          <TopbarMenu
+            activePanel={activePanel}
+            togglePanel={togglePanel}
+            reviewCount={reviewSession.comment_count || 0}
+            queueCount={(queue.staged?.length || 0) + queue.queue.length + (queue.active ? 1 : 0)}
+            queueBusy={queueBusy}
+          />
         </div>
 
         <Outlet context={outletContext} />
@@ -269,6 +252,9 @@ export default function AppLayout() {
         </>
       )}
 
+      {/* Topbar hamburger menu defined in this file so it has direct access
+          to togglePanel + counts; not worth a separate file at this size. */}
+
       {queue.batch && queue.batch.total > 0 && (
         <div className="render-progress-footer">
           <div className="render-progress-label">
@@ -284,6 +270,90 @@ export default function AppLayout() {
           <div className="render-progress-pct">
             {Math.round((queue.batch.done / queue.batch.total) * 100)}%
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Topbar hamburger that opens a small dropdown with Review / Queue / Logs.
+ * Each item shows its own activity badge (review comments, queue depth)
+ * and reflects whether that panel is currently open. Click outside or Esc
+ * closes the menu.
+ */
+function TopbarMenu({ activePanel, togglePanel, reviewCount, queueCount, queueBusy }) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onDoc = (e) => {
+      if (!wrapperRef.current) return
+      if (!wrapperRef.current.contains(e.target)) setOpen(false)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const hasActivity = reviewCount > 0 || queueBusy
+  const totalBadge = reviewCount + queueCount
+
+  const pick = (name) => {
+    togglePanel(name)
+    setOpen(false)
+  }
+
+  return (
+    <div className="topbar-menu" ref={wrapperRef}>
+      <button
+        type="button"
+        className={`topbar-menu-trigger${hasActivity ? ' topbar-menu-trigger--has-activity' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Open panels menu"
+      >
+        ☰
+        {totalBadge > 0 && <span className="topbar-menu-badge">{totalBadge}</span>}
+      </button>
+      {open && (
+        <div className="topbar-menu-dropdown" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            className={`topbar-menu-item${activePanel === 'review' ? ' topbar-menu-item--active' : ''}`}
+            onClick={() => pick('review')}
+          >
+            <span>Review</span>
+            {reviewCount > 0 && (
+              <span className="topbar-menu-item-badge topbar-menu-item-badge--review">{reviewCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={`topbar-menu-item${activePanel === 'queue' ? ' topbar-menu-item--active' : ''}`}
+            onClick={() => pick('queue')}
+          >
+            <span>Queue</span>
+            {queueCount > 0 && (
+              <span className="topbar-menu-item-badge">{queueCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={`topbar-menu-item${activePanel === 'logs' ? ' topbar-menu-item--active' : ''}`}
+            onClick={() => pick('logs')}
+          >
+            <span>Logs</span>
+          </button>
         </div>
       )}
     </div>

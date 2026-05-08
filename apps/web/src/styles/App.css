@@ -831,6 +831,99 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   cursor: pointer;
 }
 
+/* ── Topbar hamburger menu ───────────────────────────────────────────────── */
+.topbar-menu {
+  position: relative;
+  margin-left: auto;
+}
+.topbar-menu-trigger {
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 10px;
+  line-height: 1;
+  transition: all 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.topbar-menu-trigger:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+.topbar-menu-trigger--has-activity {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.topbar-menu-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+}
+.topbar-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  min-width: 200px;
+  padding: 4px;
+  z-index: 102;
+}
+.topbar-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 7px 10px;
+  text-align: left;
+  transition: background 0.1s;
+}
+.topbar-menu-item:hover {
+  background: var(--surface-2);
+}
+.topbar-menu-item--active {
+  background: rgba(91, 138, 245, 0.12);
+  color: var(--accent);
+}
+.topbar-menu-item-badge {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-menu-item-badge--review {
+  background: #c48a3a;
+}
+
 /* ── Queue panel (right drawer) ───────────────────────────────────────────── */
 .queue-panel {
   position: fixed;
@@ -1772,7 +1865,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   border-top: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
-  z-index: 50;
+  z-index: 101; /* above .panel-overlay-backdrop (100) so clicks land on the panel */
   font-family: var(--font-mono);
   font-size: 12px;
 }
