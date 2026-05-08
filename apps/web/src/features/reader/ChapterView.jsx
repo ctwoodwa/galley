@@ -840,6 +840,7 @@ export default function ChapterView({
         )}
         <SentenceNavBar
           alignedChunks={alignedChunks}
+          chunkMapRef={chunkMapRef}
           playerRef={playerRef}
           onPrevSentence={() => seekRelativeSentence(-1)}
           onNextSentence={() => seekRelativeSentence(1)}
