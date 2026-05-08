@@ -30,20 +30,29 @@
  *   }
  */
 
-const STORAGE_KEY = 'galley.voice-templates.v1'
-const DEFAULTS_KEY = 'galley.voice-template-defaults.v1'
+// Bumped v1 → v2 (2026-05-08): seed Fast template held 'af_bella' (raw
+// Kokoro model voice) in the voice/preset slot. audiobook.py validates
+// against its preset catalog (female-solo, male-solo, ciufi-galeazzi, …)
+// and rejected af_bella. Old localStorage now ignored; user re-customizes
+// templates if they had personalized them.
+const STORAGE_KEY = 'galley.voice-templates.v2'
+const DEFAULTS_KEY = 'galley.voice-template-defaults.v2'
 
 function uid() {
   // Browser-friendly short id. Not crypto-grade; just stable enough.
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 }
 
+// NOTE: `voice` here is the audiobook.py *preset name*, not a raw Kokoro
+// model voice. Catalog (kokoro engine): british, british-male,
+// ciufi-galeazzi, female, female-solo, fenrir, fry, fry-blend, male,
+// male-solo, practitioner, sinek. (Bella → female-solo internally.)
 const FAST_DEFAULT = {
   id: 'seed-fast',
   name: 'Quick draft (Fast)',
   tier: 'fast',
   engine: 'kokoro-local',
-  voice: 'af_bella',
+  voice: 'female-solo',
   speed: 1.0,
   per_sentence: true,
   notes: 'Local Kokoro Docker — instant feedback while editing. No API key needed.',
@@ -127,7 +136,7 @@ export function createTemplate(template) {
     name: template.name || 'Untitled',
     tier: template.tier === 'quality' ? 'quality' : 'fast',
     engine: template.engine || 'kokoro-local',
-    voice: template.voice || 'af_bella',
+    voice: template.voice || 'female-solo',
     speed: typeof template.speed === 'number' ? template.speed : 1.0,
     per_sentence: !!template.per_sentence,
     exaggeration: template.exaggeration,
