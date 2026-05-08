@@ -23,6 +23,7 @@ interface VoiceSidebarProps {
   client: TTSClient
   voices: VoiceInfo[]
   loading: boolean
+  error?: string | null
   onRefresh: () => void
   selectedVoice: string
   onSelect: (id: string) => void
@@ -34,7 +35,7 @@ interface VoiceSidebarProps {
 }
 
 export function VoiceSidebar({
-  client, voices, loading, onRefresh, selectedVoice, onSelect,
+  client, voices, loading, error, onRefresh, selectedVoice, onSelect,
   readonly = false, getPrefetchedMeta,
   favorites, onFavoriteToggle, style,
 }: VoiceSidebarProps) {
@@ -105,6 +106,8 @@ export function VoiceSidebar({
       })()
     : null
 
+  const isUnauthorized = !!error && /\b401\b|unauthor/i.test(error)
+
   return (
     <aside className="flex-shrink-0 flex flex-col bg-stone-900 overflow-hidden" style={style}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-stone-800">
@@ -137,6 +140,24 @@ export function VoiceSidebar({
 
       {deleteError && (
         <div role="alert" className="px-3 py-2 text-xs text-red-400 bg-red-950/50 border-b border-red-900">{deleteError}</div>
+      )}
+
+      {error && (
+        <div role="alert" className="px-3 py-2 text-xs text-red-400 bg-red-950/50 border-b border-red-900">
+          {isUnauthorized ? (
+            <>
+              <strong>API key required.</strong> Open the settings gear (top-right of /inference) and paste your Bearer token, then click Refresh.
+            </>
+          ) : (
+            <>
+              <strong>Could not load voices.</strong> {error.replace(/^Error:\s*/i, '')}
+              <button
+                onClick={onRefresh}
+                className="ml-2 underline hover:no-underline"
+              >Retry</button>
+            </>
+          )}
+        </div>
       )}
 
       <div className="flex-1 overflow-y-auto py-1">

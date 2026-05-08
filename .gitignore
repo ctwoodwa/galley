@@ -7,3 +7,5 @@ __pycache__/
 .DS_Store
 integrations/the-inverted-stack/sync.config.json
 build/output/
+.env.local
+.env.*.local

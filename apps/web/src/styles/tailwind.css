@@ -8,3 +8,19 @@
  * for editorial UI. New studio panels use Tailwind utilities + shadcn/ui
  * components.
  */
+
+/*
+ * Music-panel theme variables. Originally defined in inference-studio's
+ * index.css; ported here so the music components under
+ * apps/web/src/components/inference/music/ keep their warm-tone palette.
+ * The play button explicitly uses dark text on --mp-accent, so --mp-accent
+ * must remain light/warm.
+ */
+:root {
+  --mp-bg: #14110d;
+  --mp-fg: #f3eee5;
+  --mp-accent: #d4a373;
+  --mp-line: #2a2520;
+  --mp-danger: #f05252;
+  --mp-wave-dim: #6b5d52;
+}

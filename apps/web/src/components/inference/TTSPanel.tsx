@@ -26,8 +26,8 @@ interface TTSPanelProps {
 }
 
 export function TTSPanel({ client, serverReachable }: TTSPanelProps) {
-  const { voices, loading: voicesLoading, refresh: refreshVoices } = useVoices(client)
-  const { voices: kokoroVoices, loading: kokoroLoading, refresh: refreshKokoroVoices } = useVoices(client, 'kokoro')
+  const { voices, loading: voicesLoading, error: voicesError, refresh: refreshVoices } = useVoices(client)
+  const { voices: kokoroVoices, loading: kokoroLoading, error: kokoroError, refresh: refreshKokoroVoices } = useVoices(client, 'kokoro')
 
   const [model, setModel] = useLocalStorage<ModelId>('is.tts.model', 'higgs')
   const [selectedVoice, setSelectedVoice] = useLocalStorage('is.tts.voice.higgs', 'en_woman')
@@ -96,6 +96,7 @@ export function TTSPanel({ client, serverReachable }: TTSPanelProps) {
           client={client}
           voices={voices}
           loading={voicesLoading}
+          error={voicesError}
           onRefresh={refreshVoices}
           selectedVoice={selectedVoice}
           onSelect={setSelectedVoice}
@@ -108,6 +109,7 @@ export function TTSPanel({ client, serverReachable }: TTSPanelProps) {
           client={client}
           voices={kokoroVoices}
           loading={kokoroLoading}
+          error={kokoroError}
           onRefresh={refreshKokoroVoices}
           selectedVoice={kokoroVoice}
           onSelect={setKokoroVoice}
