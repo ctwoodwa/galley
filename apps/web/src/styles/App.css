@@ -832,24 +832,15 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 
 /* Inline mode — when rendered as a route page (/read/:bookId/queue|review|logs)
    instead of as an overlay drawer. Fills the parent .page-full instead of
-   floating fixed at the right of the viewport. */
-.queue-panel--inline {
+   floating fixed at the right of the viewport. The .log-panel--inline rule
+   lives later in the file (after .log-panel) so cascade order works. */
+.queue-panel.queue-panel--inline {
   position: static;
   top: auto;
   right: auto;
   height: 100%;
   width: 100% !important;
   border-left: none;
-  z-index: auto;
-}
-.log-panel--inline {
-  position: static;
-  bottom: auto;
-  left: auto;
-  right: auto;
-  height: 100% !important;
-  width: 100%;
-  border-top: none;
   z-index: auto;
 }
 
@@ -1769,6 +1760,20 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   z-index: 50;
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+/* Inline mode — drops the fixed positioning so .log-panel sits inside its
+   parent .page-full (route-page mode). Specificity matched by class
+   compounding so it wins against the .log-panel rule above. */
+.log-panel.log-panel--inline {
+  position: static;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  height: 100% !important;
+  width: 100%;
+  border-top: none;
+  z-index: auto;
 }
 
 .log-resize-handle {

@@ -219,13 +219,6 @@ export default function AppLayout() {
             className={`queue-toggle${isRoute('logs') ? ' queue-toggle--busy' : ''}`}
             onClick={() => navigate(`${base}/logs`)}
           >Logs</button>
-          <button
-            className={`queue-toggle${isRoute('studio') ? ' queue-toggle--busy' : ''}`}
-            onClick={() => navigate(`${base}/studio`)}
-          >Studio</button>
-          <span className="topbar-divider" />
-          <a href="http://desktop-umt08rn:8881/" target="_blank" rel="noopener noreferrer" className="topbar-link">API Demo</a>
-          <a href="http://desktop-umt08rn:8881/api/docs" target="_blank" rel="noopener noreferrer" className="topbar-link">API Docs</a>
         </div>
 
         <Outlet context={outletContext} />
