@@ -177,8 +177,9 @@ export default function AppLayout() {
     onReaderStateChange: saveReaderState,
   }
 
+  const isRendering = queue.batch && queue.batch.total > 0
   return (
-    <div className="app">
+    <div className={`app${isRendering ? ' app--rendering' : ''}`}>
       <div className="sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-library-link">← Library</Link>
