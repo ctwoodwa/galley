@@ -1,6 +1,70 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, forwardRef, useMemo } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 
 const POLL_INTERVAL = 3000
+const LOG_LINE_PX = 20
+
+// ── Virtualized log lines (extracted; uses react-virtual to handle 1000s of lines) ────
+const VirtualizedLogLines = forwardRef(function VirtualizedLogLines(
+  { logData, autoScroll, onScroll },
+  forwardedRef,
+) {
+  const internalRef = useRef(null)
+  // Bridge external ref + internal ref for both onScroll wiring and autoscroll
+  const setRefs = useCallback(
+    (el) => {
+      internalRef.current = el
+      if (typeof forwardedRef === 'function') forwardedRef(el)
+      else if (forwardedRef) forwardedRef.current = el
+    },
+    [forwardedRef],
+  )
+
+  const lines = useMemo(() => logData?.lines ?? [], [logData])
+
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => internalRef.current,
+    estimateSize: () => LOG_LINE_PX,
+    overscan: 12,
+  })
+
+  // Auto-scroll to bottom on new lines if user is following the tail
+  useEffect(() => {
+    if (autoScroll && lines.length > 0) {
+      virtualizer.scrollToIndex(lines.length - 1, { align: 'end' })
+    }
+  }, [lines.length, autoScroll, virtualizer])
+
+  return (
+    <div className="log-lines" ref={setRefs} onScroll={onScroll}>
+      {!logData && <div className="log-loading">Loading…</div>}
+      {logData && lines.length > 0 && (
+        <div
+          style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}
+        >
+          {virtualizer.getVirtualItems().map((vi) => {
+            const line = lines[vi.index]
+            return (
+              <div
+                key={vi.index}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${vi.start}px)`,
+                }}
+              >
+                <LogLine line={line} />
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+})
 const HEIGHT_KEY = 'log-panel-height'
 const HEIGHT_MIN = 160
 const HEIGHT_MAX = Math.round(window.innerHeight * 0.85)
@@ -287,16 +351,12 @@ export default function LogPanel({ bookId, onClose }) {
             </div>
           )}
 
-          <div
-            className="log-lines"
+          <VirtualizedLogLines
             ref={contentRef}
+            logData={logData}
+            autoScroll={autoScroll}
             onScroll={handleContentScroll}
-          >
-            {!logData && <div className="log-loading">Loading…</div>}
-            {logData?.lines?.map((line, i) => (
-              <LogLine key={i} line={line} />
-            ))}
-          </div>
+          />
 
           <div className="log-content-footer">
             {logData && (
