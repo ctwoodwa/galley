@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocalStorage } from '@/hooks/inference/useLocalStorage'
 import type { TTSClient, KnobValues, AudioFormat, ModelId } from '@galley/api-client'
 import { KnobSlider } from './KnobSlider'
 import { PresetButtons, PRESETS } from './PresetButtons'
-import { WaveformPlayer } from './WaveformPlayer'
+import AudioPlayerBar from '@/components/audio-player/AudioPlayerBar'
 import { ErrorBanner } from './ErrorBanner'
 import { SampleTextPicker } from './SampleTextPicker'
 
@@ -206,7 +206,9 @@ export function SingleTab({
         }
       </button>
 
-      {audioBlob && canPlay && <WaveformPlayer blob={audioBlob} label={`${format.toUpperCase()} preview`} />}
+      {audioBlob && canPlay && (
+        <TtsPreview blob={audioBlob} format={format} voice={voice} />
+      )}
       {audioBlob && !canPlay && (
         <a
           href={pcmUrl ?? '#'}
@@ -216,6 +218,23 @@ export function SingleTab({
           ↓ Download {format.toUpperCase()}
         </a>
       )}
+    </div>
+  )
+}
+
+// Manages the blob URL lifecycle so the AudioPlayerBar can take a stable src.
+function TtsPreview({ blob, format, voice }: { blob: Blob; format: string; voice?: string }) {
+  const url = useMemo(() => URL.createObjectURL(blob), [blob])
+  useEffect(() => () => URL.revokeObjectURL(url), [url])
+  return (
+    <div className="sticky-player-bar">
+      <div className="audio-player-row">
+        <AudioPlayerBar
+          src={url}
+          downloadName={`${voice ?? 'preview'}.${format}`}
+          autoPlay
+        />
+      </div>
     </div>
   )
 }

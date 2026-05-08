@@ -79,45 +79,10 @@ export function MusicPanel() {
 
   useEffect(() => { void loadAll() }, [loadAll])
 
-  // audio element wiring
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.volume = volume
-  }, [volume])
-
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    const track = tracks.find(t => t.id === currentId)
-    if (!track?.file_path) { audio.src = ''; return }
-    audio.src = client.trackStreamUrl(track.file_path)
-    if (isPlaying) audio.play().catch(() => {})
-  }, [currentId, tracks, client])
-
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (isPlaying) audio.play().catch(() => {})
-    else audio.pause()
-  }, [isPlaying])
-
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    const onEnded = () => {
-      setQueue(q => {
-        if (q.length === 0) { setIsPlaying(false); return q }
-        const [next, ...rest] = q
-        setCurrentId(next)
-        setIsPlaying(true)
-        return rest
-      })
-    }
-    audio.addEventListener('ended', onEnded)
-    return () => audio.removeEventListener('ended', onEnded)
-  }, [])
+  // Audio playback now lives inside AudioPlayerBar (rendered by MusicPlayer
+  // footer). Track-changes simply update currentId; AudioPlayerBar's `key={src}`
+  // recreates the underlying <audio> when the URL changes. AudioPlayerBar's
+  // `onEnded` advances the queue (wired via playNext below).
 
   // filtered + sorted tracks
   const filtered = useMemo(() => {
@@ -164,10 +129,7 @@ export function MusicPanel() {
     client.incrementPlays(id).catch(() => {})
   }, [currentId, client])
 
-  const togglePlay = useCallback(() => {
-    if (!currentId && filtered.length) { playTrack(filtered[0].id); return }
-    setIsPlaying(p => !p)
-  }, [currentId, filtered, playTrack])
+  // togglePlay removed — AudioPlayerBar's own play button handles play/pause.
 
   const toggleFav = useCallback((id: string) => {
     setTracks(ts => ts.map(t => {
@@ -192,33 +154,28 @@ export function MusicPanel() {
 
   const playNext = useCallback(() => {
     setQueue(q => {
-      if (!q.length) { setIsPlaying(false); return q }
+      if (!q.length) {
+        // No queued track — advance through the filtered list.
+        const idx = filtered.findIndex(t => t.id === currentId)
+        if (idx >= 0 && idx < filtered.length - 1) {
+          setCurrentId(filtered[idx + 1].id)
+          setIsPlaying(true)
+        } else {
+          setIsPlaying(false)
+        }
+        return q
+      }
       const [next, ...rest] = q
       setCurrentId(next)
       setIsPlaying(true)
       return rest
     })
-  }, [])
+  }, [currentId, filtered])
 
   const playPrev = useCallback(() => {
-    const audio = audioRef.current
-    if (audio && audio.currentTime > 3) {
-      audio.currentTime = 0
-      return
-    }
     const idx = filtered.findIndex(t => t.id === currentId)
     if (idx > 0) playTrack(filtered[idx - 1].id)
   }, [currentId, filtered, playTrack])
-
-  const seekAudio = useCallback((p: number) => {
-    const audio = audioRef.current
-    if (audio && audio.duration) audio.currentTime = audio.duration * p
-  }, [])
-
-  const setVolume = useCallback((v: number) => {
-    setVolumeState(v)
-    if (audioRef.current) audioRef.current.volume = v
-  }, [setVolumeState])
 
   const currentTrack = tracks.find(t => t.id === currentId) ?? null
   const detailTrack = tracks.find(t => t.id === detailId) ?? null
@@ -244,9 +201,6 @@ export function MusicPanel() {
 
   return (
     <div className="music-panel">
-      {/* hidden audio element */}
-      <audio ref={audioRef} style={{ display: 'none' }} />
-
       {/* body */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <MusicSidebar
@@ -443,16 +397,10 @@ export function MusicPanel() {
       {/* player */}
       <MusicPlayer
         track={currentTrack}
-        isPlaying={isPlaying}
-        volume={volume}
         queueLen={queue.length}
         showQueue={showQueue}
-        audioRef={audioRef}
-        onToggle={togglePlay}
         onPrev={playPrev}
         onNext={playNext}
-        onSeek={seekAudio}
-        onVolume={setVolume}
         onFav={toggleFav}
         onToggleQueue={() => setShowQueue(s => !s)}
       />
