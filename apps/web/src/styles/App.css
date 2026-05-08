@@ -1757,6 +1757,21 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   word-break: break-all;
 }
 
+/* ── Phase E commit-edits button — high-emphasis amber CTA ────────────── */
+.regen-btn--commit {
+  background: #d6a85e !important;
+  color: #1d2327 !important;
+  border-color: #b58324 !important;
+  font-weight: 600;
+}
+.regen-btn--commit:hover:not(:disabled) {
+  background: #e0b673 !important;
+}
+.regen-btn--commit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 /* ── Voice-template editor: voice catalog status text ─────────────────── */
 .vts-voice-status {
   font-size: 11px;

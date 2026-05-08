@@ -5,6 +5,9 @@ import SentenceNavBar from './SentenceNavBar.jsx'
 import GeneratePanel from '../tts/GeneratePanel.jsx'
 import AudioMeta from '../audio-player/AudioMeta.jsx'
 import CommentToolbar from '../annotations/CommentToolbar.jsx'
+import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
+import { templateToRenderConfig } from '@/lib/voice-templates'
+import { useApiConfig } from '@/api/config'
 
 function stripFrontmatter(md) {
   return md.replace(/^---\n[\s\S]*?\n---\n?/, '')
@@ -278,6 +281,8 @@ export default function ChapterView({
   const [sentenceEdit, setSentenceEdit] = useState(null)
   // Phase E: chunk_ids that have pending edits — drives the amber margin dot.
   const [staleChunkIds, setStaleChunkIds] = useState(new Set())
+  const [pendingEditCount, setPendingEditCount] = useState(0)
+  const [committingEdits, setCommittingEdits] = useState(false)
 
   // ── Chapter-level (overall) note form ───────────────────────────────────
   const [showNoteForm, setShowNoteForm] = useState(false)
@@ -350,8 +355,11 @@ export default function ChapterView({
       // Phase E: load pending sentence edits to drive stale margin dots.
       fetch(`/api/books/${bookId}/chapters/${chapter.id}/sentence-edits`)
         .then(r => r.ok ? r.json() : [])
-        .then(edits => setStaleChunkIds(new Set(edits.map(e => e.chunk_id))))
-        .catch(() => setStaleChunkIds(new Set()))
+        .then(edits => {
+          setStaleChunkIds(new Set(edits.map(e => e.chunk_id)))
+          setPendingEditCount(edits.length)
+        })
+        .catch(() => { setStaleChunkIds(new Set()); setPendingEditCount(0) })
 
       // Phase D splash decision — only open if we have a meaningful saved
       // position (>30s into the chapter) AND alignment data so we can map
@@ -797,12 +805,59 @@ export default function ChapterView({
       })
       if (!r.ok) throw new Error('Failed to save edit')
       setStaleChunkIds(prev => new Set(prev).add(edit.chunk_id))
+      setPendingEditCount(c => c + 1)
       setSentenceEdit(null)
-      showPhaseDToast(`✎ Edit committed (${tier} render queued)`)
+      showPhaseDToast(`✎ Edit queued — click "Commit edits" to apply + re-render`)
     } catch (err) {
       showPhaseDToast(`Edit failed: ${err.message}`)
     }
   }, [sentenceEdit, bookId, chapter.id, showPhaseDToast])
+
+  // ── Phase E commit (Option A): apply pending edits to source.md and
+  // trigger a chapter regen. Backend rotates the journal to applied-edits/
+  // for audit; we resync local state from the response.
+  const { forTier } = useVoiceTemplates()
+  const apiKey = useApiConfig((s) => s.apiKey)
+  const commitPendingEdits = useCallback(async (tier = 'quality') => {
+    if (committingEdits || pendingEditCount === 0) return
+    setCommittingEdits(true)
+    const template = forTier(tier)
+    const cfg = templateToRenderConfig(template)
+    const needsKey = cfg.engine === 'chatterbox' || cfg.engine === 'kokoro'
+    if (needsKey && !apiKey) {
+      showPhaseDToast('No API key — open ⚙ → Inference API Settings')
+      setCommittingEdits(false)
+      return
+    }
+    try {
+      const r = await fetch(`/api/books/${bookId}/chapters/${chapter.id}/commit-edits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          regen: true,
+          options: { ...cfg, ...(needsKey && apiKey ? { api_key: apiKey } : {}) },
+        }),
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`)
+      const appliedN = data.applied?.length || 0
+      const skippedN = data.skipped?.length || 0
+      // Drop the applied chunkIds from the local stale set; skipped stay.
+      const appliedIds = new Set((data.applied || []).map(a => a.chunk_id))
+      setStaleChunkIds(prev => {
+        const next = new Set(prev)
+        for (const id of appliedIds) next.delete(id)
+        return next
+      })
+      setPendingEditCount(skippedN)
+      const note = skippedN > 0 ? ` (${skippedN} skipped — already applied or not found)` : ''
+      showPhaseDToast(`✓ Applied ${appliedN} edit${appliedN === 1 ? '' : 's'}; rendering…${note}`)
+    } catch (err) {
+      showPhaseDToast(`Commit failed: ${err.message}`)
+    } finally {
+      setCommittingEdits(false)
+    }
+  }, [bookId, chapter.id, committingEdits, pendingEditCount, forTier, apiKey, showPhaseDToast])
 
   // ── Phase B: click-to-localize on a sentence/paragraph ────────────────
 
@@ -1063,6 +1118,18 @@ export default function ChapterView({
               >
                 + Queue
               </button>
+              {pendingEditCount > 0 && (
+                <button
+                  className="regen-btn regen-btn--commit"
+                  onClick={() => commitPendingEdits('quality')}
+                  disabled={committingEdits}
+                  title="Apply pending sentence edits to source.md and re-render the chapter audio"
+                >
+                  {committingEdits
+                    ? `Committing ${pendingEditCount}…`
+                    : `✎ Commit ${pendingEditCount} edit${pendingEditCount === 1 ? '' : 's'} & re-render`}
+                </button>
+              )}
             </div>
           </div>
         ) : (

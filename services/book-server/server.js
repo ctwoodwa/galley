@@ -738,6 +738,109 @@ app.post('/api/books/:bookId/chapters/:id/sentence-edit', (req, res) => {
   }
 })
 
+// Phase E commit step (Option A): apply pending edits to source.md and
+// optionally trigger regen. Idempotent on the journal — once applied,
+// the journal is rotated to applied-edits/<slug>-<ts>.jsonl as an audit
+// trail. Source.md is mutated atomically (tmp + rename); on parse-style
+// failure mid-batch we abort before any disk write so the file never
+// lands half-applied.
+app.post('/api/books/:bookId/chapters/:id/commit-edits', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const chapter = data.chapters.find(c => c.id === req.params.id)
+  if (!chapter) return res.status(404).json({ error: 'Chapter not found' })
+
+  const { regen = false, options = {} } = req.body || {}
+
+  const editsDir = path.join(bookBuildDir(req.params.bookId), 'pending-edits')
+  const editLog  = path.join(editsDir, `${chapter.slug}.jsonl`)
+  if (!fs.existsSync(editLog)) {
+    return res.status(400).json({ error: 'No pending edits' })
+  }
+
+  let edits
+  try {
+    edits = fs.readFileSync(editLog, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
+  } catch (err) {
+    return res.status(500).json({ error: `Journal parse failed: ${err.message}` })
+  }
+  if (edits.length === 0) {
+    return res.status(400).json({ error: 'Journal is empty' })
+  }
+
+  const sourcePath = path.join(data.book.bookRoot, chapter.source_path)
+  let content
+  try { content = fs.readFileSync(sourcePath, 'utf8') }
+  catch (err) { return res.status(500).json({ error: `Read source.md: ${err.message}` }) }
+
+  // Apply edits in journal order. For each: locate prev_text (first
+  // occurrence) and replace with new_text. Skip-with-reason if prev_text
+  // is missing (already-applied / external edit) or empty (legacy entry).
+  const applied = [], skipped = []
+  let working = content
+  for (const e of edits) {
+    if (!e.prev_text) {
+      skipped.push({ chunk_id: e.chunk_id, reason: 'no prev_text in journal entry' })
+      continue
+    }
+    const idx = working.indexOf(e.prev_text)
+    if (idx < 0) {
+      skipped.push({ chunk_id: e.chunk_id, reason: 'prev_text not found (already applied or externally edited)' })
+      continue
+    }
+    working = working.slice(0, idx) + e.new_text + working.slice(idx + e.prev_text.length)
+    applied.push({ chunk_id: e.chunk_id, prev_chars: e.prev_text.length, new_chars: e.new_text.length })
+  }
+
+  if (applied.length === 0) {
+    return res.status(409).json({ error: 'No edits could be applied', skipped })
+  }
+
+  // Atomic write: tmp + rename. Same volume, so rename is atomic.
+  const tmp = sourcePath + '.commit-edits.tmp'
+  try {
+    fs.writeFileSync(tmp, working, 'utf8')
+    fs.renameSync(tmp, sourcePath)
+  } catch (err) {
+    try { fs.unlinkSync(tmp) } catch {}
+    return res.status(500).json({ error: `Write source.md: ${err.message}` })
+  }
+
+  // Rotate the journal: move the applied entries out of pending-edits/
+  // and into applied-edits/ for audit. If only some edits applied, only
+  // rotate those (we keep skipped entries in the live journal so the
+  // user sees them in the UI as "needs attention").
+  const appliedDir = path.join(bookBuildDir(req.params.bookId), 'applied-edits')
+  fs.mkdirSync(appliedDir, { recursive: true })
+  const ts = new Date().toISOString().replace(/[:.]/g, '-')
+  const archive = path.join(appliedDir, `${chapter.slug}-${ts}.jsonl`)
+  const appliedSet = new Set(applied.map(a => a.chunk_id))
+  const appliedLines = edits.filter(e => appliedSet.has(e.chunk_id)).map(JSON.stringify).join('\n')
+  fs.writeFileSync(archive, appliedLines + '\n', 'utf8')
+  const remainingLines = edits.filter(e => !appliedSet.has(e.chunk_id)).map(JSON.stringify).join('\n')
+  if (remainingLines) {
+    fs.writeFileSync(editLog, remainingLines + '\n', 'utf8')
+  } else {
+    fs.unlinkSync(editLog)
+  }
+
+  let job = null
+  if (regen) {
+    try {
+      job = startGeneration(chapter.id, { ...options, force: true })
+    } catch (err) {
+      return res.json({ applied, skipped, regen_error: err.message })
+    }
+  }
+
+  res.json({
+    applied,
+    skipped,
+    archive: path.relative(data.book.bookRoot, archive),
+    job_id: job?.id ?? null,
+  })
+})
+
 app.get('/api/books/:bookId/chapters/:id/sentence-edits', (req, res) => {
   const data = getBook(req.params.bookId)
   if (!data) return res.status(404).json({ error: 'Book not found' })
