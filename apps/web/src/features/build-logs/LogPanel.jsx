@@ -122,7 +122,30 @@ function LogItem({ log, selected, onSelect }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export default function LogPanel({ bookId, onClose, inline = false }) {
+export default function LogPanel({ bookId, onClose, inline = false, onCleared }) {
+  const handleClearLogs = useCallback(async () => {
+    const totalCount = (typeof window !== 'undefined' && window.confirm)
+      ? window.confirm('Delete all completed log files? Active (in-progress) logs will be kept.')
+      : true
+    if (!totalCount) return
+    try {
+      const res = await fetch(`/api/books/${bookId}/logs`, { method: 'DELETE' })
+      const data = await res.json()
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(`Deleted ${data.deleted ?? 0} log file(s)${data.kept_running ? `; kept ${data.kept_running} still-running` : ''}.`)
+      }
+      onCleared?.()
+    } catch (err) {
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(`Clear logs failed: ${err.message}`)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId])
+  return <LogPanelInner bookId={bookId} onClose={onClose} inline={inline} onClearLogs={handleClearLogs} />
+}
+
+function LogPanelInner({ bookId, onClose, inline = false, onClearLogs }) {
   const [panelHeight, setPanelHeight] = useState(
     () => Math.min(HEIGHT_MAX, Math.max(HEIGHT_MIN, parseInt(localStorage.getItem(HEIGHT_KEY) || HEIGHT_DEFAULT, 10)))
   )
@@ -304,6 +327,16 @@ export default function LogPanel({ bookId, onClose, inline = false }) {
             </button>
           ))}
         </div>
+        {onClearLogs && (
+          <button
+            className="log-panel-close"
+            onClick={onClearLogs}
+            title="Clear all completed logs"
+            style={{ marginRight: 4 }}
+          >
+            🗑
+          </button>
+        )}
         <button
           className={`log-maximize-btn ${maximized ? 'active' : ''}`}
           onClick={toggleMaximize}

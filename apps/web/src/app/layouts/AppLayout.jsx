@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Outlet, useNavigate, useLocation, useParams, Link } from 'react-router-dom'
 import ChapterList from '../../features/chapter-browser/ChapterList.jsx'
+import QueuePanel from '../../features/render-queue/QueuePanel.jsx'
+import ReviewPanel from '../../features/review-sessions/ReviewPanel.jsx'
+import LogPanel from '../../features/build-logs/LogPanel.jsx'
 
 const SIDEBAR_MIN     = 180
 const SIDEBAR_MAX     = 520
@@ -28,6 +31,19 @@ export default function AppLayout() {
   const [selectedId, setSelectedId]           = useState(null)
   const [volume, setVolume]                   = useState('vol-1')
   const [loading, setLoading]                 = useState(true)
+  // Drawer overlays — null when none open. Reader stays visible behind.
+  const [activePanel, setActivePanel]         = useState(null)
+  const togglePanel = useCallback((name) => {
+    setActivePanel((cur) => (cur === name ? null : name))
+  }, [])
+  const closePanel = useCallback(() => setActivePanel(null), [])
+  // Esc closes the active panel
+  useEffect(() => {
+    if (!activePanel) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') closePanel() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [activePanel, closePanel])
   const [sidebarWidth, setSidebarWidth]       = useState(
     () => parseInt(localStorage.getItem('sidebarWidth') || SIDEBAR_DEFAULT, 10)
   )
@@ -155,7 +171,7 @@ export default function AppLayout() {
     savedChapterState, saveReaderState,
     onCommentAdded: fetchReviewSession,
     onAudioGenerated: refreshChapters,
-    onAddToQueue: () => navigate(`${base}/queue`),
+    onAddToQueue: () => setActivePanel('queue'),
     onReaderStateChange: saveReaderState,
   }
 
@@ -192,12 +208,13 @@ export default function AppLayout() {
       <div className="main">
         <div className="main-topbar">
           <button
-            className={`queue-toggle${isRoute('') ? ' queue-toggle--busy' : ''}`}
-            onClick={() => navigate(base)}
+            className={`queue-toggle${activePanel === null ? ' queue-toggle--busy' : ''}`}
+            onClick={() => setActivePanel(null)}
+            title="Hide all overlay panels"
           >Read</button>
           <button
-            className={`review-toggle${reviewSession.comment_count > 0 ? ' review-toggle--active' : ''}${isRoute('review') ? ' queue-toggle--busy' : ''}`}
-            onClick={() => navigate(`${base}/review`)}
+            className={`review-toggle${reviewSession.comment_count > 0 ? ' review-toggle--active' : ''}${activePanel === 'review' ? ' queue-toggle--busy' : ''}`}
+            onClick={() => togglePanel('review')}
           >
             {reviewSession.comment_count > 0 && (
               <span className="review-badge">{reviewSession.comment_count}</span>
@@ -205,8 +222,8 @@ export default function AppLayout() {
             Review
           </button>
           <button
-            className={`queue-toggle${queueBusy ? ' queue-toggle--busy' : ''}${isRoute('queue') ? ' queue-toggle--busy' : ''}`}
-            onClick={() => navigate(`${base}/queue`)}
+            className={`queue-toggle${queueBusy ? ' queue-toggle--busy' : ''}${activePanel === 'queue' ? ' queue-toggle--busy' : ''}`}
+            onClick={() => togglePanel('queue')}
           >
             {queueBusy && (
               <span className="queue-badge">
@@ -216,13 +233,41 @@ export default function AppLayout() {
             Queue
           </button>
           <button
-            className={`queue-toggle${isRoute('logs') ? ' queue-toggle--busy' : ''}`}
-            onClick={() => navigate(`${base}/logs`)}
+            className={`queue-toggle${activePanel === 'logs' ? ' queue-toggle--busy' : ''}`}
+            onClick={() => togglePanel('logs')}
           >Logs</button>
         </div>
 
         <Outlet context={outletContext} />
       </div>
+
+      {/* ── Overlay drawers — chapter content stays visible behind ─────── */}
+      {activePanel && (
+        <>
+          <div className="panel-overlay-backdrop" onClick={closePanel} aria-hidden="true" />
+          {activePanel === 'review' && (
+            <ReviewPanel
+              bookId={bookId}
+              session={reviewSession}
+              onClose={closePanel}
+              onSessionUpdate={fetchReviewSession}
+            />
+          )}
+          {activePanel === 'queue' && (
+            <QueuePanel
+              chapters={chapters}
+              queue={queue}
+              onClose={closePanel}
+            />
+          )}
+          {activePanel === 'logs' && (
+            <LogPanel
+              bookId={bookId}
+              onClose={closePanel}
+            />
+          )}
+        </>
+      )}
 
       {queue.batch && queue.batch.total > 0 && (
         <div className="render-progress-footer">

@@ -785,6 +785,44 @@ function safeLogFilename(filename) {
   return filename && !filename.includes('/') && !filename.includes('..') && filename.endsWith('.log')
 }
 
+app.delete('/api/books/:bookId/logs', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  try {
+    if (!fs.existsSync(data.logDir)) return res.json({ deleted: 0 })
+    const files = fs.readdirSync(data.logDir).filter(f => f.endsWith('.log'))
+    let deleted = 0
+    for (const f of files) {
+      // Skip running logs (mtime in last 2 minutes) so we don't kill an active render's log mid-write.
+      try {
+        const filepath = path.join(data.logDir, f)
+        const stat = fs.statSync(filepath)
+        if (Date.now() - stat.mtimeMs < 120_000) continue
+        fs.unlinkSync(filepath)
+        deleted += 1
+      } catch {}
+    }
+    res.json({ deleted, kept_running: files.length - deleted })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.delete('/api/books/:bookId/logs/:filename', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const { filename } = req.params
+  if (!safeLogFilename(filename)) return res.status(400).json({ error: 'Invalid filename' })
+  const filepath = path.join(data.logDir, filename)
+  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'Log not found' })
+  try {
+    const stat = fs.statSync(filepath)
+    if (Date.now() - stat.mtimeMs < 120_000) {
+      return res.status(409).json({ error: 'Log is still being written; refusing to delete' })
+    }
+    fs.unlinkSync(filepath)
+    res.json({ deleted: 1 })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 app.get('/api/books/:bookId/logs', (req, res) => {
   const data = getBook(req.params.bookId)
   if (!data) return res.status(404).json({ error: 'Book not found' })

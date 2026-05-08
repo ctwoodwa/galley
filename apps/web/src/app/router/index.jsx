@@ -3,9 +3,6 @@ import { lazy, Suspense } from 'react'
 import LibraryPage from '../../pages/library/LibraryPage.jsx'
 import AppLayout from '../layouts/AppLayout.jsx'
 import ReadPage from '../../pages/read/ReadPage.jsx'
-import ReviewPage from '../../pages/review/ReviewPage.jsx'
-import QueuePage from '../../pages/queue/QueuePage.jsx'
-import LogsPage from '../../pages/logs/LogsPage.jsx'
 import StudioLayout from '../../pages/studio/StudioLayout.jsx'
 import VoicesPage from '../../pages/studio/voices/VoicesPage.jsx'
 import SttQcPage from '../../pages/studio/stt-qc/SttQcPage.jsx'
@@ -37,9 +34,9 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <ReadPage /> },
-      { path: 'review', element: <ReviewPage /> },
-      { path: 'queue', element: <QueuePage /> },
-      { path: 'logs', element: <LogsPage /> },
+      // Review / Queue / Logs are now overlay drawers controlled from
+      // AppLayout state, not routes. They render on top of the chapter
+      // view so editing context stays visible.
       {
         path: 'studio',
         element: <StudioLayout />,
