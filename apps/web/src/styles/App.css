@@ -1819,6 +1819,46 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   cursor: progress;
 }
 
+.regen-btn--commit-queue {
+  background: transparent !important;
+  color: #6b4d18 !important;
+  border-color: #b58324 !important;
+}
+.regen-btn--commit-queue:hover:not(:disabled) {
+  background: #fdf5e3 !important;
+}
+
+/* Phase H: this-chapter queue-state badge in audio-actions */
+.chapter-queue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border: 1px solid var(--sidebar-border);
+}
+.chapter-queue-badge--rendering {
+  background: rgba(70, 163, 106, 0.16);
+  border-color: #46a36a;
+  color: #2f7a4d;
+  animation: chapter-queue-pulse 2s ease-in-out infinite;
+}
+.chapter-queue-badge--staged {
+  background: var(--sidebar-bg, #eef0f3);
+  color: var(--text-dim);
+}
+.chapter-queue-badge--pending {
+  background: #fdf5e3;
+  border-color: #b58324;
+  color: #6b4d18;
+}
+@keyframes chapter-queue-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
 /* ── Voice-template editor: voice catalog status text ─────────────────── */
 .vts-voice-status {
   font-size: 11px;

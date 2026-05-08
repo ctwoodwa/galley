@@ -268,7 +268,7 @@ function wrapWords(element) {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function ChapterView({
-  bookId, chapter, onAudioGenerated, queueActive, onAddToQueue,
+  bookId, chapter, onAudioGenerated, queueActive, onAddToQueue, queue,
   onCommentAdded, savedState, onReaderStateChange, reviewComments
 }) {
   const [content, setContent] = useState('')
@@ -849,7 +849,9 @@ export default function ChapterView({
   // for audit; we resync local state from the response.
   const { forTier } = useVoiceTemplates()
   const apiKey = useApiConfig((s) => s.apiKey)
-  const commitPendingEdits = useCallback(async (tier = 'quality') => {
+  // mode='render-now' → apply edits + spawn audiobook.py inline
+  // mode='queue'      → apply edits + stage chapter for batch render
+  const commitPendingEdits = useCallback(async (mode = 'render-now', tier = 'quality') => {
     if (committingEdits || pendingEditCount === 0) return
     setCommittingEdits(true)
     const template = forTier(tier)
@@ -860,20 +862,17 @@ export default function ChapterView({
       setCommittingEdits(false)
       return
     }
+    const opts = { ...cfg, ...(needsKey && apiKey ? { api_key: apiKey } : {}) }
     try {
       const r = await fetch(`/api/books/${bookId}/chapters/${chapter.id}/commit-edits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          regen: true,
-          options: { ...cfg, ...(needsKey && apiKey ? { api_key: apiKey } : {}) },
-        }),
+        body: JSON.stringify({ regen: mode === 'render-now', options: opts }),
       })
       const data = await r.json()
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`)
       const appliedN = data.applied?.length || 0
       const skippedN = data.skipped?.length || 0
-      // Drop the applied chunkIds from the local stale set; skipped stay.
       const appliedIds = new Set((data.applied || []).map(a => a.chunk_id))
       setStaleChunkIds(prev => {
         const next = new Set(prev)
@@ -881,14 +880,40 @@ export default function ChapterView({
         return next
       })
       setPendingEditCount(skippedN)
-      const note = skippedN > 0 ? ` (${skippedN} skipped — already applied or not found)` : ''
-      showPhaseDToast(`✓ Applied ${appliedN} edit${appliedN === 1 ? '' : 's'}; rendering…${note}`)
+
+      if (mode === 'queue') {
+        // commit-edits did NOT spawn; we stage the chapter for batch render
+        // so the user can keep adding chapters and process them as a group.
+        const qr = await fetch(`/api/queue`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: [{ chapter_id: chapter.id, options: { ...opts, force: true } }],
+          }),
+        })
+        if (!qr.ok) throw new Error('queued, but stage failed')
+        showPhaseDToast(`✓ ${appliedN} edit${appliedN === 1 ? '' : 's'} applied; chapter staged in queue`)
+      } else {
+        const note = skippedN > 0 ? ` (${skippedN} skipped — already applied or not found)` : ''
+        showPhaseDToast(`✓ Applied ${appliedN} edit${appliedN === 1 ? '' : 's'}; rendering…${note}`)
+      }
     } catch (err) {
       showPhaseDToast(`Commit failed: ${err.message}`)
     } finally {
       setCommittingEdits(false)
     }
   }, [bookId, chapter.id, committingEdits, pendingEditCount, forTier, apiKey, showPhaseDToast])
+
+  // Phase H: surface this chapter's queue status (active/staged/pending)
+  // so the user knows whether their +Queue / Commit-and-queue gesture
+  // landed and is being processed.
+  const chapterQueueState = (() => {
+    if (!queue) return null
+    if (queue.active?.chapter_id === chapter.id) return 'rendering'
+    if (queue.staged?.some?.((s) => s.chapter_id === chapter.id)) return 'staged'
+    if (queue.queue?.some?.((q) => q.chapter_id === chapter.id))  return 'pending'
+    return null
+  })()
 
   // ── Phase G: dictate-to-comment while listening ────────────────────────
   // Press D while audio is playing → audio pauses, mic starts recording.
@@ -1235,16 +1260,40 @@ export default function ChapterView({
                 + Queue
               </button>
               {pendingEditCount > 0 && (
-                <button
-                  className="regen-btn regen-btn--commit"
-                  onClick={() => commitPendingEdits('quality')}
-                  disabled={committingEdits}
-                  title="Apply pending sentence edits to source.md and re-render the chapter audio"
+                <>
+                  <button
+                    className="regen-btn regen-btn--commit"
+                    onClick={() => commitPendingEdits('render-now')}
+                    disabled={committingEdits}
+                    title="Apply pending sentence edits to source.md and re-render the chapter audio NOW (foreground)"
+                  >
+                    {committingEdits
+                      ? `Committing ${pendingEditCount}…`
+                      : `✎ Commit ${pendingEditCount} & render now`}
+                  </button>
+                  <button
+                    className="regen-btn regen-btn--commit-queue"
+                    onClick={() => commitPendingEdits('queue')}
+                    disabled={committingEdits}
+                    title="Apply pending edits to source.md, then stage the chapter for batch processing (no foreground spawn)"
+                  >
+                    ✎ … & queue
+                  </button>
+                </>
+              )}
+              {chapterQueueState && (
+                <span
+                  className={`chapter-queue-badge chapter-queue-badge--${chapterQueueState}`}
+                  title={chapterQueueState === 'rendering'
+                    ? 'This chapter is being rendered right now'
+                    : chapterQueueState === 'staged'
+                      ? 'This chapter is staged — click Process N items in the queue panel to start it'
+                      : 'This chapter is queued and will render when its turn comes'}
                 >
-                  {committingEdits
-                    ? `Committing ${pendingEditCount}…`
-                    : `✎ Commit ${pendingEditCount} edit${pendingEditCount === 1 ? '' : 's'} & re-render`}
-                </button>
+                  {chapterQueueState === 'rendering' && '🟢 rendering'}
+                  {chapterQueueState === 'staged'    && '⚪ staged'}
+                  {chapterQueueState === 'pending'   && '⏳ queued'}
+                </span>
               )}
             </div>
           </div>

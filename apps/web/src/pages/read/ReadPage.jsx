@@ -4,6 +4,7 @@ import ChapterView from '../../features/reader/ChapterView.jsx'
 export default function ReadPage() {
   const {
     bookId, chapters, selected, volume, loading,
+    queue,
     reviewSession, savedChapterState,
     onAudioGenerated, onAddToQueue, onCommentAdded,
     onReaderStateChange,
@@ -14,6 +15,7 @@ export default function ReadPage() {
       <ChapterView
         bookId={bookId}
         chapter={selected}
+        queue={queue}
         onAudioGenerated={onAudioGenerated}
         onAddToQueue={onAddToQueue}
         onCommentAdded={onCommentAdded}
