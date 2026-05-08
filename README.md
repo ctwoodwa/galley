@@ -2,7 +2,7 @@
 
 Editorial production platform for book publishing workflows + raw AI inference exploration.
 
-A consolidated local-first app for authoring, audio production, image generation, and (eventually) ePub / audiobook assembly + distribution. Talks to a Mac-local Express server for book content and a Windows GPU server for inference.
+A consolidated local-first app for authoring, audio production, image generation, and ePub / audiobook assembly + distribution. Talks to a local Express server for book content and a GPU server for inference.
 
 ## Surfaces
 
@@ -14,8 +14,8 @@ The app has two complementary surfaces over the same backends:
 | **Inference Studio** | `/inference/...` | Raw API exploration: TTS / STT / Image / Music — not chapter-aware |
 
 Backends:
-- **Mac-local Express** (`services/book-server` on `:3080`) — chapter content, jobs, MP3 ID3 tags
-- **Windows GPU API** (`http://desktop-umt08rn:8881` by default) — TTS (Kokoro / Chatterbox), STT, image generation (ComfyUI), music library
+- **local Express** (`services/book-server` on `:3080`) — chapter content, jobs, MP3 ID3 tags
+- **Remote GPU API** (`http://desktop-umt08rn:8881` by default) — TTS (Kokoro / Chatterbox), STT, image generation (ComfyUI), music library
 
 Settings drawer in the inference studio header lets you change the API base URL + Bearer token (persisted in localStorage).
 
