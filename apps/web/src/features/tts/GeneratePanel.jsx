@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
 import { templateToRenderConfig } from '@/lib/voice-templates'
 import { useApiConfig } from '@/api/config'
+import AudiobookProgress from './AudiobookProgress'
 
 const KOKORO_PRESETS = ['male', 'male-solo', 'female', 'female-solo', 'sinek', 'practitioner', 'british', 'fenrir', 'au']
 const CHATTERBOX_PRESETS = ['male', 'female-solo', 'broom_salesman', 'sinek', 'practitioner', 'british', 'fenrir', 'fry', 'ciufi-galeazzi']
@@ -132,14 +133,10 @@ export default function GeneratePanel({ bookId, chapter, onGenerated }) {
     return (
       <div className="generate-panel">
         <div className="job-status">
-          <div className={`job-badge ${job.status}`}>
-            {isRunning && <span className="spinner" />}
-            {isRunning ? 'Generating…' : isDone ? '✓ Done' : '✗ Failed'}
-          </div>
           {isRunning && <p className="job-hint">Generation runs in background — safe to navigate away.</p>}
           {isDone    && <p className="job-hint">Audio updated. Reload the player to hear it.</p>}
-          {isFailed  && <p className="job-hint">Check the log below for errors.</p>}
-          {log && <pre className="job-log">{log}</pre>}
+          {isFailed  && <p className="job-hint">Render failed. See details below.</p>}
+          <AudiobookProgress log={log} status={job.status} />
           {(isDone || isFailed) && (
             <button className="gen-button secondary" onClick={() => { setJob(null); setLog('') }}>
               {isFailed ? 'Try again' : 'Generate again'}

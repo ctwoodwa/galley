@@ -3,6 +3,7 @@ import { SortableQueueList } from './SortableQueueList'
 import { useVoiceTemplates } from '@/lib/useVoiceTemplates'
 import { templateToRenderConfig } from '@/lib/voice-templates'
 import { useApiConfig } from '@/api/config'
+import AudiobookProgress from '../tts/AudiobookProgress'
 
 const PANEL_MIN = 340
 const PANEL_MAX = 720
@@ -194,7 +195,7 @@ export default function QueuePanel({ chapters, queue, onClose, inline = false })
                 <span className={`track-dot ${engineDotClass(queue.active.options?.engine)}`} />
               )}
             </div>
-            {activeLog && <pre className="queue-log">{activeLog}</pre>}
+            {activeLog && <AudiobookProgress log={activeLog} status="running" />}
           </div>
         )}
 

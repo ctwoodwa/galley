@@ -1748,6 +1748,148 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   word-break: break-all;
 }
 
+/* ── AudiobookProgress card (replaces raw <pre> log) ───────────────────── */
+.ap {
+  margin-top: 10px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.ap--done    { border-color: #46a36a; }
+.ap--crashed { border-color: #c9444c; background: #fef5f5; }
+
+.ap-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ap-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--sidebar-bg, #eef0f3);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.ap-pill--engine { background: #2c7a7b; color: #fff; }
+.ap-pill--voice  { background: #d6a85e; color: #1d2327; }
+.ap-pill--mode   { background: #8b69b8; color: #fff; }
+
+.ap-spinner {
+  width: 12px; height: 12px;
+  border: 2px solid var(--sidebar-border);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  margin-left: 4px;
+  animation: ap-spin .8s linear infinite;
+}
+@keyframes ap-spin { to { transform: rotate(360deg); } }
+
+.ap-chapter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.ap-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--sidebar-bg, #eef0f3);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ap-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2c7a7b, #46a36a);
+  transition: width .3s ease-out;
+}
+.ap--crashed .ap-bar-fill { background: linear-gradient(90deg, #c9444c, #e07f7f); }
+.ap--done .ap-bar-fill    { background: #46a36a; }
+
+.ap-counts {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.ap-eta { margin-left: auto; }
+
+.ap-current {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px dashed var(--sidebar-border);
+  padding-top: 6px;
+}
+.ap-current--pause { color: #8b69b8; }
+.ap-current-t { font-variant-numeric: tabular-nums; }
+
+.ap-retries {
+  font-size: 11.5px;
+  color: #b58324;
+  background: #fdf5e3;
+  border-left: 3px solid #b58324;
+  padding: 4px 8px;
+}
+.ap-retry-detail { color: var(--text-dim); }
+
+.ap-crash {
+  margin: 0;
+  padding: 8px 10px;
+  background: #1d1d1d;
+  color: #f5b6b9;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.ap-done-line {
+  font-size: 11.5px;
+  color: #2f7a4d;
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.ap-toggle {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 0;
+  cursor: pointer;
+}
+.ap-toggle:hover { color: var(--text); }
+
+.ap-raw {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 /* ── Queue add section (fills remaining panel height) ─────────────────────── */
 .queue-add-section {
   flex: 1;
