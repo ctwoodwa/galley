@@ -13,6 +13,9 @@ dependencies = [
     "spacy >=3.7,<4",
 ]
 
+[project.scripts]
+prose-telemetry = "prose_telemetry.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest >=7",
