@@ -9,3 +9,10 @@ integrations/the-inverted-stack/sync.config.json
 build/output/
 .env.local
 .env.*.local
+
+# Python virtual environments (any subdir)
+.venv/
+**/.venv/
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
