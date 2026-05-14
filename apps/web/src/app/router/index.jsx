@@ -17,12 +17,24 @@ const InferenceSttPage = lazy(() => import('../../pages/inference/SttPage.tsx'))
 const InferenceImagePage = lazy(() => import('../../pages/inference/ImagePage.tsx'))
 const InferenceMusicPage = lazy(() => import('../../pages/inference/MusicPage.tsx'))
 
+// SettingsPageV2 — task-first, progressively-disclosed settings shell.
+// See docs/settings/ia.md. Lazy-loaded; reachable at /settings.
+const SettingsPageV2 = lazy(() =>
+  import('../../pages/SettingsPageV2.tsx').then((m) => ({ default: m.SettingsPageV2 })),
+)
+
 const inferenceFallback = (
   <div className="flex items-center justify-center h-screen bg-bg text-text-dim text-sm">
     Loading Inference Studio…
   </div>
 )
+const settingsFallback = (
+  <div className="flex items-center justify-center h-screen bg-bg text-text-dim text-sm">
+    Loading Settings…
+  </div>
+)
 const wrap = (el) => <Suspense fallback={inferenceFallback}>{el}</Suspense>
+const wrapSettings = (el) => <Suspense fallback={settingsFallback}>{el}</Suspense>
 
 export const router = createBrowserRouter([
   {
@@ -64,5 +76,14 @@ export const router = createBrowserRouter([
       { path: 'image', element: wrap(<InferenceImagePage />) },
       { path: 'music', element: wrap(<InferenceMusicPage />) },
     ],
+  },
+  {
+    // Task-first, progressively-disclosed settings shell. See
+    // docs/settings/ia.md. Reachable at /settings — no nav link yet
+    // while the IA is under review; the legacy SettingsDrawer (right-
+    // side drawer in the inference studio) continues to serve the
+    // existing production UI.
+    path: '/settings',
+    element: wrapSettings(<SettingsPageV2 />),
   },
 ])
