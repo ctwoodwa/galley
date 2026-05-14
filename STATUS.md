@@ -56,12 +56,12 @@ module / environment.
 | V | Notifications | user | Placeholder | — |
 | VI | Integrations | environment | Placeholder | — |
 | VII | Advanced | environment | Placeholder | — |
-| VIII | Danger zone | environment | Placeholder | — |
+| VIII | Danger zone | environment | **Shipped (action-list shape)** | Resets via store actions; "Clear all" wipes localStorage + reloads |
 
 **Primitives in `apps/web/src/components/settings/`** —
 `SettingsShell`, `SettingsSection`, `AdvancedDisclosure`,
-`ToggleField`, `RadioField`, `SelectField`, `TextField`,
-`SecretField`, `ActionField`. Scoped CSS in `settings.css`.
+`EntryCard`, `ConfirmDialog`, `ToggleField`, `RadioField`, `SelectField`,
+`TextField`, `SecretField`, `ActionField`. Scoped CSS in `settings.css`.
 
 **API stress-test result (3 reference sections shipped):** the
 primitive API held across form-driven (Services, Editorial) and
@@ -122,6 +122,8 @@ External worker projects:
 ## Recent commit log (galley)
 
 ```
+e429a8a refactor(settings): extract EntryCard + ConfirmDialog primitives
+837f314 docs: STATUS.md breadcrumb + galley-as-sunfish-accelerator framing
 ec7629e feat(settings): BooksSection + bookRegistry store
 73bd4e9 feat(settings): EditorialSection + RadioField primitive
 d25a34a style(settings): editorial letterpress theme for /settings
@@ -134,36 +136,32 @@ c23b8ba build: ignore build/ outputs after history rewrite
 … (Phases 4 / 3 / 2 / 1 / 0.5 / 0 of prose work below)
 ```
 
-Top of `main` on `origin` = `ec7629e`. Working tree may carry
-pre-session edits unrelated to this work — `git status` to verify.
+Top of `main` on `origin` is the most recent commit above. Working
+tree may carry pre-session edits unrelated to this work —
+`git status` to verify.
 
 ## Deferred / next moves
 
 Triaged in priority order, none blocking:
 
-1. **Promote shared patterns** — extract `EntryCard` (the numbered-
-   card layout shared by ServicesSection slots + BooksSection cards)
-   to a shared component; build a `ConfirmDialog` primitive so
-   `window.confirm` in BooksSection and the future Danger zone share
-   one affordance.
-2. **Wire book-server write-through for editorial prefs** —
+1. **Wire book-server write-through for editorial prefs** —
    `PUT /api/books/:bookId/profile/editorial` on `services/book-server`,
    then make `useEditorialPrefs` write-through. Closes the gap where
    galley/prose pipelines don't yet see what users set in Editorial.
-3. **Finish remaining settings sections** — Account, Notifications,
-   Integrations, Advanced, Danger zone. Danger zone is the interesting
-   one because it forces the confirm-dialog primitive into existence.
-4. **Worker installation docs** at `docs/services/{tts-fast,tts-quality,stt,image,music}.md`
+2. **Finish remaining placeholder sections** — Account, Notifications,
+   Integrations, Advanced. (Danger zone shipped using ConfirmDialog as
+   forcing function; EntryCard/ConfirmDialog primitives shipped.)
+3. **Worker installation docs** at `docs/services/{tts-fast,tts-quality,stt,image,music}.md`
    — completes the services story.
-5. **Replace legacy SettingsDrawer** in the inference studio with
+4. **Replace legacy SettingsDrawer** in the inference studio with
    `<Link to="/settings">` from a cog button. Removes the right-drawer
    redundancy.
-6. **Cog icon in nav** — make `/settings` discoverable from the
+5. **Cog icon in nav** — make `/settings` discoverable from the
    editorial reader header + library page.
-7. **Coordination beacon** to Sunfish XO proposing
+6. **Coordination beacon** to Sunfish XO proposing
    galley-as-accelerator + the foundation-ui-settings package upstream.
    See `docs/architecture/galley-as-sunfish-accelerator.md`.
-8. **Phase 7 of prose work** — BookNLP integration is blocked on
+7. **Phase 7 of prose work** — BookNLP integration is blocked on
    PyTorch wheel availability for Intel Mac. See `prose/ROADMAP.md`
    for the four resolution paths.
 

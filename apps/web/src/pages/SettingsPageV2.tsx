@@ -5,6 +5,7 @@ import {
   ServicesSection,
   EditorialSection,
   BooksSection,
+  DangerZoneSection,
   SettingsSection,
   type SettingsScope,
 } from '@/components/settings'
@@ -90,12 +91,7 @@ export function SettingsPageV2() {
       label: 'Danger zone',
       icon: <AlertOctagon size={14} />,
       scope: 'environment',
-      Component: PlaceholderSection(
-        'VIII',
-        'Danger zone',
-        'Clear local state, force re-pair, delete book registry entry.',
-        'environment',
-      ),
+      Component: DangerZoneSection,
     },
   ]
 

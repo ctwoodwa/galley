@@ -31,3 +31,4 @@ export {
 export { ServicesSection } from './sections/ServicesSection'
 export { EditorialSection } from './sections/EditorialSection'
 export { BooksSection } from './sections/BooksSection'
+export { DangerZoneSection } from './sections/DangerZoneSection'
