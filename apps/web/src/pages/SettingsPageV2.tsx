@@ -3,6 +3,7 @@ import {
   SettingsShell,
   type SettingsSectionDef,
   ServicesSection,
+  EditorialSection,
   SettingsSection,
   type SettingsScope,
 } from '@/components/settings'
@@ -50,12 +51,7 @@ export function SettingsPageV2() {
       label: 'Editorial',
       icon: <Sliders size={14} />,
       scope: 'workspace',
-      Component: PlaceholderSection(
-        'IV',
-        'Editorial',
-        'Prose-review preset, voice-pass mode, per-detector overrides.',
-        'workspace',
-      ),
+      Component: EditorialSection,
     },
     {
       id: 'notifications',

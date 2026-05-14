@@ -648,6 +648,71 @@
   cursor: not-allowed;
 }
 
+/* ─── Radio field ──────────────────────────────────────────────────────── */
+
+.gs-radio-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gs-space-2);
+  flex-wrap: wrap;
+  padding: var(--gs-space-1) 0;
+}
+
+.gs-radio-item-wrap {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.gs-radio-item {
+  background: transparent;
+  border: none;
+  padding: var(--gs-space-1) 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: var(--gs-serif-text);
+  font-size: var(--gs-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gs-ink-muted);
+  border-bottom: 1.5px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.gs-radio-item:hover:not(:disabled) {
+  color: var(--gs-ink);
+}
+
+.gs-radio-item.active {
+  color: var(--gs-vermilion);
+  font-weight: 600;
+  border-bottom-color: var(--gs-vermilion);
+}
+
+.gs-radio-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.gs-radio-divider {
+  color: var(--gs-rule);
+  font-family: var(--gs-serif-display);
+  font-style: italic;
+  user-select: none;
+  padding: 0 var(--gs-space-2);
+}
+
+.gs-radio-consequence {
+  font-family: var(--gs-serif-text);
+  font-style: italic;
+  font-size: var(--gs-text-sm);
+  color: var(--gs-ink-soft);
+  margin-top: var(--gs-space-2);
+  padding-left: var(--gs-space-3);
+  border-left: 2px solid var(--gs-vermilion);
+  line-height: 1.5;
+}
+
 /* ─── Slot card (ServicesSection-specific) ─────────────────────────────── */
 
 .gs-slot {

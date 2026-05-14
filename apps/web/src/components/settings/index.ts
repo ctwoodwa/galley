@@ -21,4 +21,10 @@ export {
 export { TextField, type TextFieldProps } from './fields/TextField'
 export { SecretField, type SecretFieldProps } from './fields/SecretField'
 export { ActionField, type ActionFieldProps } from './fields/ActionField'
+export {
+  RadioField,
+  type RadioFieldProps,
+  type RadioOption,
+} from './fields/RadioField'
 export { ServicesSection } from './sections/ServicesSection'
+export { EditorialSection } from './sections/EditorialSection'
