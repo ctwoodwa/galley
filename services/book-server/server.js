@@ -387,6 +387,32 @@ function bookOutputDir(bookId)   { return path.join(bookBuildDir(bookId), 'outpu
 function defaultBookAudioDir(bookId) { return path.join(bookOutputDir(bookId), 'audiobook') }
 function bookAlignmentDir(bookId){ return path.join(bookBuildDir(bookId), 'alignments') }
 
+// Galley sidecar path inside a book repo. Holds files that galley
+// generates/edits on the book's behalf — distinct from
+// `<bookRoot>/book.editorial.yaml`, which is the author-owned prose-
+// pipeline config and must not be clobbered by the UI.
+function bookGalleyDir(bookRoot) { return path.join(bookRoot, '.galley') }
+function editorialProfilePath(bookRoot) {
+  return path.join(bookGalleyDir(bookRoot), 'editorial.json')
+}
+
+// Whitelisted shape — must match `EditorialPrefs` in
+// apps/web/src/api/editorialPrefs.ts. Keeps malformed PUTs from
+// landing on disk.
+const PROSE_PRESETS = new Set(['gentle', 'standard', 'strict'])
+const VOICE_PASS_MODES = new Set(['off', 'read-only', 'auto-apply'])
+
+function validateEditorialPrefs(input) {
+  if (!input || typeof input !== 'object') return { error: 'Body must be an object.' }
+  const { activeVoice, prosePreset, voicePassMode } = input
+  if (typeof activeVoice !== 'string') return { error: 'activeVoice must be a string.' }
+  if (!PROSE_PRESETS.has(prosePreset))
+    return { error: `prosePreset must be one of ${[...PROSE_PRESETS].join(', ')}.` }
+  if (!VOICE_PASS_MODES.has(voicePassMode))
+    return { error: `voicePassMode must be one of ${[...VOICE_PASS_MODES].join(', ')}.` }
+  return { value: { activeVoice, prosePreset, voicePassMode } }
+}
+
 // Resolve the audiobook directory for a book. Three-tier:
 //   1. Explicit `book.audioRoot` if set and existing on disk
 //   2. Auto-discovered sibling under GALLEY_BUILD_ROOT (see discoverAudioRoot)
@@ -947,6 +973,53 @@ function chapterListResponse(data) {
     }
   })
 }
+
+// ── Book-scoped: editorial profile sidecar ────────────────────────────────────
+// Read/write the galley UI editorial overlay at <bookRoot>/.galley/editorial.json.
+// This is an overlay that the prose pipeline can later choose to merge on top
+// of the author-owned `book.editorial.yaml` — galley never edits the yaml
+// directly. Missing file returns `{ prefs: null }` rather than 404 so clients
+// can distinguish "book exists, no overlay yet" from "no such book".
+
+app.get('/api/books/:bookId/profile/editorial', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const filePath = editorialProfilePath(data.book.bookRoot)
+  if (!fs.existsSync(filePath)) return res.json({ prefs: null })
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    res.json({ prefs: parsed.prefs ?? null })
+  } catch (e) {
+    res.status(500).json({ error: `Failed to read editorial profile: ${e.message}` })
+  }
+})
+
+app.put('/api/books/:bookId/profile/editorial', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const incoming = req.body?.prefs
+  const check = validateEditorialPrefs(incoming)
+  if (check.error) return res.status(400).json({ error: check.error })
+
+  const dir = bookGalleyDir(data.book.bookRoot)
+  const filePath = editorialProfilePath(data.book.bookRoot)
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    const payload = {
+      schema_version: 1,
+      updated_at: new Date().toISOString(),
+      prefs: check.value,
+    }
+    // Atomic write — write to a temp sibling and rename, so a crash mid-
+    // write can't leave a half-written editorial.json.
+    const tmp = filePath + '.tmp'
+    fs.writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8')
+    fs.renameSync(tmp, filePath)
+    res.json(payload)
+  } catch (e) {
+    res.status(500).json({ error: `Failed to write editorial profile: ${e.message}` })
+  }
+})
 
 app.get('/api/books/:bookId/chapters', (req, res) => {
   const data = getBook(req.params.bookId)

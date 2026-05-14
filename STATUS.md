@@ -52,7 +52,7 @@ module / environment.
 | I | Account | user | Placeholder | — |
 | II | Books | workspace | **Shipped (registry shape)** | `useBookRegistry` → localStorage |
 | III | Services | environment | **Shipped (form shape, reference)** | `useApiConfig.services` → localStorage |
-| IV | Editorial | workspace | **Shipped (form + radio shape)** | `useEditorialPrefs` → localStorage, keyed by bookId |
+| IV | Editorial | workspace | **Shipped (form + radio shape)** | `useEditorialPrefs` → localStorage + debounced write-through to `<bookRoot>/.galley/editorial.json` via book-server |
 | V | Notifications | user | Placeholder | — |
 | VI | Integrations | environment | Placeholder | — |
 | VII | Advanced | environment | Placeholder | — |
@@ -144,24 +144,29 @@ tree may carry pre-session edits unrelated to this work —
 
 Triaged in priority order, none blocking:
 
-1. **Wire book-server write-through for editorial prefs** —
-   `PUT /api/books/:bookId/profile/editorial` on `services/book-server`,
-   then make `useEditorialPrefs` write-through. Closes the gap where
-   galley/prose pipelines don't yet see what users set in Editorial.
-2. **Finish remaining placeholder sections** — Account, Notifications,
+1. **Finish remaining placeholder sections** — Account, Notifications,
    Integrations, Advanced. (Danger zone shipped using ConfirmDialog as
    forcing function; EntryCard/ConfirmDialog primitives shipped.)
-3. **Worker installation docs** at `docs/services/{tts-fast,tts-quality,stt,image,music}.md`
+2. **Pipeline read-side for the editorial sidecar** — galley/prose
+   should read `<bookRoot>/.galley/editorial.json` as an overlay on
+   top of `book.editorial.yaml` (preset → detector-threshold mapping,
+   activeVoice → voice id). Today the write-through lands the file;
+   nothing reads it yet.
+3. **Hydrate-on-mount for editorialPrefs** — when the user has
+   multiple machines editing the same book over Tailscale, last-
+   writer-wins reconciliation matters. Today local-storage wins on
+   every load.
+4. **Worker installation docs** at `docs/services/{tts-fast,tts-quality,stt,image,music}.md`
    — completes the services story.
-4. **Replace legacy SettingsDrawer** in the inference studio with
+5. **Replace legacy SettingsDrawer** in the inference studio with
    `<Link to="/settings">` from a cog button. Removes the right-drawer
    redundancy.
-5. **Cog icon in nav** — make `/settings` discoverable from the
+6. **Cog icon in nav** — make `/settings` discoverable from the
    editorial reader header + library page.
-6. **Coordination beacon** to Sunfish XO proposing
+7. **Coordination beacon** to Sunfish XO proposing
    galley-as-accelerator + the foundation-ui-settings package upstream.
    See `docs/architecture/galley-as-sunfish-accelerator.md`.
-7. **Phase 7 of prose work** — BookNLP integration is blocked on
+8. **Phase 7 of prose work** — BookNLP integration is blocked on
    PyTorch wheel availability for Intel Mac. See `prose/ROADMAP.md`
    for the four resolution paths.
 
