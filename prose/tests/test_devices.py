@@ -14,13 +14,16 @@ from prose_telemetry._common.types import DetectorConfig
 
 EXPECTED_DETECTORS = {
     "antimetabole",
+    "climax",
     "concession",
     "definition_by_negation",
     "distinctio",
     "epistrophe",
     "erotema",
     "hypophora",
+    "litotes",
     "prolepsis",
+    "simile",
     "symploce",
 }
 
@@ -218,6 +221,81 @@ def test_definition_by_negation_quiet_on_single_negation():
     text = "It is not the case that the network is reliable. Trust the device instead."
     findings = get("definition_by_negation").fn(text, config=DetectorConfig())
     # Only one negation; need 2+ consecutive.
+    assert findings == []
+
+
+# ─── simile (Phase 6 extra) ────────────────────────────────────────────────
+
+
+def test_simile_fires_on_like_a_pattern():
+    text = "Sync without conflict resolution is like a version control system without merging."
+    findings = get("simile").fn(text, config=DetectorConfig())
+    assert len(findings) >= 1
+
+
+def test_simile_fires_on_as_adj_as_pattern():
+    text = "The migration was as smooth as a glass surface."
+    findings = get("simile").fn(text, config=DetectorConfig())
+    assert len(findings) >= 1
+
+
+def test_simile_quiet_on_no_comparison():
+    text = "The migration was smooth and complete."
+    findings = get("simile").fn(text, config=DetectorConfig())
+    assert findings == []
+
+
+# ─── litotes (Phase 6 extra) ───────────────────────────────────────────────
+
+
+def test_litotes_fires_on_not_un_x():
+    text = "The cost of running your own infrastructure is not unreasonable."
+    findings = get("litotes").fn(text, config=DetectorConfig())
+    assert len(findings) == 1
+
+
+def test_litotes_fires_on_no_small_feat():
+    text = "Shipping the migration was no small feat for the engineering team."
+    findings = get("litotes").fn(text, config=DetectorConfig())
+    assert len(findings) == 1
+
+
+def test_litotes_quiet_on_plain_negative():
+    text = "The cost is not zero, but it is not enormous either."
+    findings = get("litotes").fn(text, config=DetectorConfig())
+    # 'not zero' / 'not enormous' don't match the canonical not-un-X pattern.
+    assert findings == []
+
+
+# ─── climax (Phase 6 extra) ────────────────────────────────────────────────
+
+
+def test_climax_fires_on_ascending_list():
+    text = (
+        "You lose the dashboard, you lose the integrations, and you "
+        "lose the customers who relied on the data for their decisions."
+    )
+    findings = get("climax").fn(text, config=DetectorConfig())
+    assert len(findings) >= 1
+    counts = findings[0].extra["word_counts"]
+    assert counts[0] <= counts[1] <= counts[2]
+
+
+def test_climax_quiet_on_uniform_lengths():
+    text = "Sync is observable, replayable, and recoverable."
+    findings = get("climax").fn(text, config=DetectorConfig())
+    # Items: 'observable'=1, 'replayable'=1, 'recoverable'=1. Ratio 1.0
+    # below min 1.5 — should not fire.
+    assert findings == []
+
+
+def test_climax_quiet_on_descending_list():
+    text = (
+        "You lose the customers who built their workflows around the "
+        "data, you lose integrations, and you lose access."
+    )
+    findings = get("climax").fn(text, config=DetectorConfig())
+    # Not monotonically non-decreasing.
     assert findings == []
 
 

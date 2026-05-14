@@ -13,24 +13,30 @@ family='literary_device', tier='stdlib'.
 
 from prose_telemetry.detectors.devices import (  # noqa: F401
     antimetabole,
+    climax,
     concession,
     definition_by_negation,
     distinctio,
     epistrophe,
     erotema,
     hypophora,
+    litotes,
     prolepsis,
+    simile,
     symploce,
 )
 
 __all__ = [
     "antimetabole",
+    "climax",
     "concession",
     "definition_by_negation",
     "distinctio",
     "epistrophe",
     "erotema",
     "hypophora",
+    "litotes",
     "prolepsis",
+    "simile",
     "symploce",
 ]

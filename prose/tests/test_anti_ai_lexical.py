@@ -35,8 +35,11 @@ EXPECTED_DETECTORS = {
 
 
 def test_all_ten_detectors_register():
-    entries = discover(family="anti_ai")
-    names = {e.name for e in entries}
+    # Filter by tier='lexical' to scope to the Phase 2 pack — Phase 3+
+    # adds proselint (also family='anti_ai' but tier='lexical' too) and
+    # Phase 6 adds structural detectors (family='anti_ai' tier='structural').
+    entries = discover(family="anti_ai", tier="lexical")
+    names = {e.name for e in entries if not e.name == "proselint"}
     assert names == EXPECTED_DETECTORS, (
         f"Missing: {EXPECTED_DETECTORS - names}; Extra: {names - EXPECTED_DETECTORS}"
     )
