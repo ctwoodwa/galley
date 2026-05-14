@@ -37,8 +37,7 @@ medium with the same internal pattern:
 | Galley is MIT-licensed; primitive editorial tooling consolidates in `galley/prose/` rather than fragmenting into separate repos | `prose/docs/adrs/0004-mit-license.md` + `prose/docs/adrs/0005-prose-first-class-tool-family.md` |
 | Vendor-neutral capability slot model — `tts/fast`, `tts/quality`, `stt/fast`, `stt/quality`, `image`, `music` — with families as worker routes and tier as a client-side slot label | `docs/services/README.md` |
 | Settings IA is task-first + progressively-disclosed; section primitives (`SettingsShell`, `SettingsSection`, fields) scoped to `.galley-settings` | `docs/settings/ia.md` |
-| Editorial letterpress aesthetic for /settings (cream paper, deep ink, vermilion accent, Fraunces + Newsreader + JetBrains Mono) | `apps/web/src/components/settings/settings.css` |
-| App-wide theme system via shadcn CSS-variable model — three families (stone / catppuccin / solarized), each with light + dark; mode `auto` follows system preference | `apps/web/src/styles/themes/index.css`, `apps/web/src/app/ThemeProvider.tsx` |
+| App-wide theme system via shadcn CSS-variable model — three families (stone / catppuccin / solarized), each with light + dark; mode `auto` follows system preference; /settings retired its scoped letterpress and now follows the unified theme | `apps/web/src/styles/themes/index.css`, `apps/web/src/app/ThemeProvider.tsx` |
 | Multi-machine deployment topology is Tailscale-connected nodes; pairing via Sunfish HMAC primitive is deferred until non-Tailscale federation matters | This file, *Deployment topology* |
 | Galley-as-Sunfish-accelerator framing is proposed but not yet ratified upstream — coordination beacon to XO is queued | `docs/architecture/galley-as-sunfish-accelerator.md` |
 
@@ -93,10 +92,11 @@ middleware with explicit version bumps and migrate handlers:
 Each migrate handler is in the same file as the store; one localStorage
 key per store; bump version when the in-memory shape changes.
 
-**Editorial letterpress is scoped.** All `.gs-*` classes in
-`settings.css` are scoped under `.galley-settings`. The rest of
-galley's existing dark theme is untouched. Promotion to global is a
-future call.
+**Unified theme.** All surfaces (`/`, `/read/*`, `/settings`,
+`/inference/*`) draw from the shadcn CSS-variable contract via the
+ThemeProvider on `<html>`. The `.gs-*` classes in `settings.css`
+still exist but now resolve their colors from theme tokens — the
+scoped letterpress register that previously lived here is retired.
 
 ## Deployment topology
 

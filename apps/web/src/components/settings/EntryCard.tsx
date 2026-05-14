@@ -9,7 +9,7 @@ export interface EntryCardProps {
   /** Typography for the title.
    *   - `'mono'` — JetBrains Mono, used for technical identifiers
    *     like capability slot ids (`tts/fast`, `image`, …).
-   *   - `'display'` — Fraunces display serif, used for human names
+   *   - `'display'` — serif body face (Lora), used for human names
    *     like book display names. */
   titleVariant?: 'mono' | 'display'
   /** Italic subtitle — provider label, id, or any short metadata. */
