@@ -1,6 +1,7 @@
 {
   "name": "galley",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "turbo dev --filter=@galley/web --filter=@galley/book-server",
     "build": "turbo build"

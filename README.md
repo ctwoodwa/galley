@@ -1,8 +1,10 @@
 # Galley
 
-Editorial production platform for book publishing workflows + raw AI inference exploration.
+**A local-first, self-hosted editorial production platform** — built on Sunfish architecture principles for book publishing workflows. Authoring, prose analysis, audio production, image generation, and ePub / audiobook assembly all run on the user's own machine, with optional routing to user-controlled remote compute when a GPU is needed. No third-party SaaS dependencies for core functionality.
 
-A consolidated local-first app for authoring, audio production, image generation, and ePub / audiobook assembly + distribution. Talks to a local Express server for book content and a GPU server for inference.
+Talks to a local Express server for book content and an optional GPU server (user-deployed) for inference. The device is the truth; the network is an optimization.
+
+Galley grows by tool family — each addressing one editorial medium with the same internal pattern. See [`prose/`](prose/) for the first family (prose analysis: literary-device detection, anti-AI-tell catching, continuity validation). Future families: `speech/` (TTS/STT-driven editing), `comics/`, `video/`.
 
 ## Surfaces
 
@@ -43,6 +45,16 @@ packages/
 services/
 ├── book-server/              Mac-local Express server (chapters, jobs, MP3 tags)
 └── python-workers/           Python TTS / STT / image / music workers
+
+prose/                        Tool family: prose analysis (see prose/README.md)
+├── lib/prose_telemetry/      Literary-device detectors + meters + verdict + held-lines
+├── lib/story_canon/          Continuity validators (dates, durations, ages, relationships)
+├── apps/                     CLI, dashboard, vale-bridge, corpus tooling (filling in by phase)
+├── books/                    Per-book profile registry
+├── docs/                     Architecture, integration, BOOK-CONFIG schema, ADR trail
+└── tests/                    Fixtures + reference corpus
+
+(speech/, comics/, video/ reserved as sibling tool families)
 
 integrations/
 └── the-inverted-stack/       Book repo sync config
