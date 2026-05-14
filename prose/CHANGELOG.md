@@ -4,10 +4,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
-### Phase 6 — Structural anti-AI + extras (planned)
-- 6 markdown-AST detectors: `-ing` tail-phrases, rule-of-three density,
-  false ranges, inline-headers, title case, fragmented headers.
-- Plus 3 extras: simile, litotes, climax/auxesis.
+### Phase 7 — BookNLP integration + story_canon expansion (planned)
+- Integrate BookNLP (MIT) for character clustering, coref, quote
+  attribution, event detection.
+- New continuity validators: place_consistency, object_inventory,
+  name_spelling, character_on_stage, said_attribution_disambiguation,
+  referential_gender_consistency.
+
+### Phase 6 — Structural anti-AI + extras (2026-05-14)
+
+Six markdown-aware anti-AI detectors plus three additional literary
+devices, all landed under detectors/anti_ai_structural/ and
+detectors/devices/. See commit 1c54d2b for full detail.
+
+Structural anti-AI: ing_tail_phrases (#3), rule_of_three_overuse (#10),
+false_ranges (#12), inline_header_bullets (#16), title_case_headings
+(#17), fragmented_headers (#29).
+
+Extra devices: simile (C15), litotes (D21), climax/auxesis (D27).
+
+Tests: 15 new in test_anti_ai_structural.py, 9 new in test_devices.py.
+Combined suite: 165/165 pass.
+
+Coverage delta:
+  Anti-AI tells:    20/29 → 26/29
+  Literary devices: 23/43 → 26/43
 
 ### Phase 5 — Mid-complexity literary devices (2026-05-14)
 
