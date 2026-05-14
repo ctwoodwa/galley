@@ -6,9 +6,19 @@ __pycache__/
 *.pyc
 .DS_Store
 integrations/the-inverted-stack/sync.config.json
-build/output/
 .env.local
 .env.*.local
+
+# Build outputs — galley produces per-book artifacts under build/<book>/.
+# Stripped from history on 2026-05-14 (audiobook MP3s, prose-metrics JSON,
+# alignment JSON — all regenerable from source). Never commit.
+/build/
+**/output/
+
+# Common artifact extensions
+*.mp3
+*.m4b
+*.wav
 
 # Python virtual environments (any subdir)
 .venv/
