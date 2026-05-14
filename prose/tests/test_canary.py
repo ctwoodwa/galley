@@ -107,8 +107,20 @@ def test_inverted_stack_profile_loads(inverted_stack_profile):
     assert p.held_lines_dir == "vol-2/act-1"
     assert p.compute.gpu_mode == "auto"
     assert p.compute.remote_base_url is None  # local-first default
-    # Phase 1 profile is a stub — full Anna detectors arrive in Phase 4.
-    assert p.detectors == {}
+    # Phase 4 populates the Anna-calibrated voice detectors.
+    assert "filter_words" in p.detectors
+    assert "motif_overuse" in p.detectors
+    assert "self_referential_frame" in p.detectors
+    # filter_words list is non-empty and contains canonical narrator-
+    # distance verbs.
+    fw = p.detector("filter_words")
+    assert fw.enabled is True
+    assert "felt" in fw.filter_words
+    assert "noticed" in fw.filter_words
+    # Retired motif list is non-empty.
+    mo = p.detector("motif_overuse")
+    assert len(mo.retired_motifs) >= 1
+    assert len(mo.motifs) >= 1
 
 
 def test_non_book_profiles_are_distinct(non_book_a_profile, non_book_b_profile):

@@ -4,11 +4,64 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
-### Phase 4 — Anna decoupling (planned)
-- Lift 9 Anna-calibrated detectors (motif lists, filter-words, lexical-chain
-  stopwords, self-referential frames, confirmation-tag regex, echo-and-
-  confirm params) into `BookProfile`-loaded config.
-- Populate `books/the-inverted-stack.yaml` with extracted Anna calibration.
+### Phase 5 — Mid-complexity literary devices (planned)
+- 9 spaCy-tier detectors: epistrophe, symploce, antimetabole, hypophora,
+  erotema, prolepsis, concession, definition-by-negation, distinctio.
+
+### Phase 4 — Anna decoupling (2026-05-14)
+
+**Voice detector pack**
+(`lib/prose_telemetry/src/prose_telemetry/detectors/voice/`):
+- `filter_words.py` — narrator-distance verbs ("I felt X", "I noticed X").
+  Reads verb list from `BookProfile.detectors.filter_words.filter_words`.
+- `motif_overuse.py` — combines retired-phrase blockers (any occurrence)
+  and capped-phrase findings (occurrences past per-book cap). Sources:
+  `BookProfile.detectors.motif_overuse.retired_motifs` and `.motifs`.
+- `self_referential_frame.py` — staff-history meta-phrases. Source:
+  `BookProfile.detectors.self_referential_frame.self_referential_frames`.
+- All three register on `prose_telemetry.detectors.voice` import under
+  family='voice', tier='stdlib'.
+
+**Anna calibration extracted** (`books/the-inverted-stack.yaml`):
+- 25 filter verbs lifted from handcount's `_FILTER_VERBS` regex.
+- 4 retired motif phrases + 8 capped motif phrases lifted from
+  handcount's `RETIRED_MOTIFS` and `CAPPED_MOTIFS` constants.
+- 11 self-referential frame phrases lifted from `_FRAME_PATTERNS` regex.
+- Lexical-chain stopwords (consortium, architecture, mission, etc.)
+  lifted from `_LEXICAL_STOPWORDS` for use when the lexical-chain
+  detector migrates in a later phase.
+
+**Fixture profiles updated**
+(`tests/fixtures/non_book_a/book.editorial.yaml`,
+`non_book_b/book.editorial.yaml`):
+- non_book_a (literary-fiction): 3 filter verbs only (felt/noticed/sensed),
+  empty motif lists, empty self-referential frames — demonstrates a
+  book with different per-detector configuration.
+- non_book_b (technical-nonfiction): filter_words disabled entirely,
+  empty motif and frame lists.
+
+**Tests** (`tests/test_voice.py`, 17 tests):
+- Registration + metadata.
+- Per-detector smoke against Anna profile + ANNA_SAMPLE.
+- Empty-config canary: each detector produces zero findings.
+- Multi-book canary (Phase 4 gate): Anna / non_book_a / non_book_b
+  produce distinct finding totals on identical prose.
+- Plain-prose negative cases: Anna profile against narration without
+  meta-frames produces zero findings.
+- Updated `test_canary.py::test_inverted_stack_profile_loads` to
+  assert the populated detector list (previously asserted empty stub).
+
+Combined Phase 1+2+3+4 suite: **115/115 pass**.
+
+**Migration shape — what changed:**
+The legacy `the-inverted-stack/build/prose_telemetry_handcount.py`
+keeps its hardcoded Anna constants for backward compatibility. New
+prose-pipeline invocations through galley/prose can use the
+`voice/` pack to get the same detection results from a config-driven
+path. The eventual end state (Phase 8+): handcount is vendored into
+galley as `lib/prose_telemetry/handcount/` and its constants are
+removed entirely in favor of `BookProfile`. Until then both paths
+coexist; new books use the voice pack from day one.
 
 ### Phase 3 — proselint + sonics (2026-05-14)
 

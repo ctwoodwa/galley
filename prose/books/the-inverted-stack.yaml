@@ -26,31 +26,99 @@ compute:
   remote_timeout_seconds: 30
   cache_dir: "~/.galley/cache/prose"
 
-# Detector overrides — empty in Phase 1. Phase 4 populates this section
-# with the Anna calibration lists currently hardcoded in
-# galley/prose/lib/prose_telemetry/handcount/ (when handcount is vendored
-# from the book repo into galley in Phase 1+).
+# Detector overrides — Phase 4 lifts the Anna-calibrated lists out of
+# handcount's hardcoded constants and into this profile. The legacy
+# handcount script keeps its constants for backward compatibility; the
+# galley/prose `voice/` detector pack reads from the lists below.
 #
-# Anticipated Phase 4 shape (commented out; not yet active):
-#
-# detectors:
-#   lexical_chain_loop:
-#     stopwords: [protocol, architecture, system, mission, consortium, ...]
-#     warning_raw_count: 8
-#     blocker_raw_count: 20
-#   motif_overuse:
-#     motifs:
-#       "what it claimed to be": 0
-#       "I am going to tell you": 0
-#     retired_motifs: [...]
-#   filter_words:
-#     filter_words: [felt, saw, noticed, realized, observed, ...]
-#     warning_per_1k: 8
-#     blocker_per_1k: 15
-#   self_referential_frame:
-#     self_referential_frames:
-#       - "I am telling you"
-#       - "I am writing this"
-#     warning_raw_count: 1
-#     blocker_raw_count: 2
-detectors: {}
+# Lists are exact extractions from build/prose_telemetry_handcount.py:
+#   filter_words            ← _FILTER_VERBS regex group (verbatim)
+#   motif_overuse.motifs    ← CAPPED_MOTIFS (cap=1 per ANNA-VOICE.md)
+#   motif_overuse.retired   ← RETIRED_MOTIFS (any occurrence = blocker)
+#   self_referential_frame  ← _FRAME_PATTERNS regex alternation
+
+detectors:
+  filter_words:
+    enabled: true
+    # Narrator-distance verbs. Match form: "I <verb>".
+    filter_words:
+      - felt
+      - saw
+      - noticed
+      - realized
+      - realised
+      - registered
+      - observed
+      - watched
+      - sensed
+      - thought
+      - wondered
+      - considered
+      - recognized
+      - recognised
+      - understood
+      - knew
+      - believed
+      - imagined
+      - remembered
+      - recalled
+      - experienced
+      - perceived
+      - decided
+      - figured
+      - determined
+    # Density thresholds (per 1k tokens). Tuned for Anna's chapters.
+    warning_per_1k: 8.0
+    blocker_per_1k: 15.0
+
+  motif_overuse:
+    enabled: true
+    # Phrases that should never appear (any occurrence = finding).
+    retired_motifs:
+      - what it claimed to be
+      - what they claimed to be
+      - what he claimed to be
+      - what she claimed to be
+    # Phrases capped at N per chapter (occurrences past N = findings).
+    # Cap = 1: appears at most once per chapter; more = warning/blocker.
+    motifs:
+      "noted and did not yet": 1
+      "I am writing this here": 1
+      "I am going to tell you": 1
+      "I am going to write": 1
+      "in this account": 1
+      "the smallest possible": 1
+      "this version of the account": 1
+      "I am leaving it in": 1
+
+  self_referential_frame:
+    enabled: true
+    # Staff-history meta-frame phrases. Per ANNA-VOICE.md anti-pattern
+    # #6, capped at one occurrence per chapter at the verdict layer
+    # (handled outside this list).
+    self_referential_frames:
+      - I am writing this here
+      - I am going to write
+      - I am going to tell you
+      - in this account
+      - the staff history
+      - for the record
+      - on the record
+      - in retrospect
+      - this version of the account
+      - I am leaving it in
+      - I am leaving the reading in
+    warning_raw_count: 2
+    blocker_raw_count: 4
+
+  # Lexical-chain stopwords — used by the upcoming galley/prose lexical
+  # chain detector (Phase 5+). Currently consumed only by the legacy
+  # handcount detector; populated here so the migration is one step.
+  lexical_chain_loop:
+    enabled: true
+    stopwords:
+      - consortium
+      - architecture
+      - mission
+      - protocol
+      - system

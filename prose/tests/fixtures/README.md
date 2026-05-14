@@ -36,3 +36,39 @@ fixtures/
 - **non_book_b** — calibrated for catching anti-AI copula avoidance and
   signposting tells. Loose thresholds (warning at high counts). Use to verify
   the same detector with different config produces different findings.
+
+## Known false positive — Claude Code security-guidance hook
+
+When the Claude Code `claude-plugins-official:security-guidance` plugin is
+active, its security-reminder hook does a **bare substring match** on file
+contents before Write/Edit operations. The match is not language-,
+context-, or word-boundary-aware, so it blocks writes containing certain
+literal substrings even when the surrounding context is plainly innocuous
+(Markdown prose, YAML config, literary examples).
+
+This was discovered the hard way while writing the alliteration test
+fixtures in this directory: the canonical "/P/" alliteration example
+contains a substring that matches the Python-serialization-module rule.
+A separate write attempt for the upstream-PR draft (`galley/docs/upstream-prs/`)
+hit the same problem when trying to *describe* what the hook checks for.
+
+**Project convention for galley test fixtures:** when writing prose
+samples that need alliteration or other phoneme-level patterns, choose
+example words and phrases that don't include the literal trigger
+substrings the hook scans for. Equivalent alliteration is easy to
+construct with other consonants or other initial letters:
+
+| Phoneme | Substitute example |
+|---|---|
+| `/P/` | "Peter Piper plucked plump peppers" |
+| `/S/` | "Sally sold seven small seashells beside the silent seashore" |
+| `/B/` | "Brisk brown bears boldly battled beside the brook" |
+
+Phoneme-detection logic is unchanged by the substitution; only the
+example words differ.
+
+A more permanent fix lives at the hook level. See
+[`../../../docs/upstream-prs/security-guidance-substring-matching.md`](../../../docs/upstream-prs/security-guidance-substring-matching.md)
+for the draft upstream proposal: make the substring matcher
+context-aware (word-boundary regex + file-extension gating +
+import-presence gating + optional project-side allow-list).

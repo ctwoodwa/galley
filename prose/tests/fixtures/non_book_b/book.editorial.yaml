@@ -27,9 +27,19 @@ detectors:
   anaphora:
     warning_per_1k: 30.0   # loose — anaphora is fine in technical lists
     blocker_per_1k: 80.0
-  filter_word:
-    warning_per_1k: 50.0   # loose — filter words are part of the register
-    blocker_per_1k: 100.0
+  filter_words:
+    # Technical-nonfiction profile: filter words are part of the register;
+    # disable entirely.
+    enabled: false
+    filter_words: []
+  motif_overuse:
+    # Same as A — no per-book motifs in technical-nonfiction by default.
+    enabled: true
+    retired_motifs: []
+    motifs: {}
+  self_referential_frame:
+    enabled: true
+    self_referential_frames: []
   copula_avoidance:
     warning_per_1k: 2.0    # strict — "serves as" anti-pattern still flagged
     blocker_per_1k: 5.0

@@ -25,9 +25,26 @@ detectors:
   anaphora:
     warning_per_1k: 5.0
     blocker_per_1k: 12.0
-  filter_word:
+  filter_words:
+    # Different list than the Inverted Stack profile (smaller, generic).
+    # Demonstrates per-book filter-verb configuration.
+    enabled: true
+    filter_words:
+      - felt
+      - noticed
+      - sensed
     warning_per_1k: 4.0
     blocker_per_1k: 10.0
+  motif_overuse:
+    # Non-Anna book has no retired or capped motifs by default.
+    enabled: true
+    retired_motifs: []
+    motifs: {}
+  self_referential_frame:
+    # Non-Anna book has no staff-history register at all.
+    enabled: true
+    self_referential_frames: []
   lexical_chain_loop:
     warning_raw_count: 2
     blocker_raw_count: 5
+    stopwords: []  # No Anna-specific topic words.
