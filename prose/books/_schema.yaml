@@ -1,0 +1,136 @@
+# Book profile schema for galley/prose.
+#
+# Profiles in this directory (and in the consuming book's repo root as
+# `book.editorial.yaml`) describe how the prose pipeline should evaluate
+# a specific book's chapters: thresholds, voice-specific stopwords,
+# motif caps, compute routing, and held-lines pointer.
+#
+# This file is JSON Schema (in yaml form) — consumed by Phase 1's
+# BookProfile loader for shape validation. Loose by design at Phase 1;
+# tightened across later phases as the field set stabilizes.
+
+$schema: http://json-schema.org/draft-07/schema#
+title: galley/prose BookProfile
+type: object
+required: [book_id]
+additionalProperties: true
+
+properties:
+
+  book_id:
+    type: string
+    description: >
+      Stable identifier. Directory-friendly slug matching the book repo
+      name. Example: "the-inverted-stack".
+    pattern: "^[a-z0-9][a-z0-9-]*$"
+
+  voice:
+    type: [string, "null"]
+    description: >
+      Narrator-voice identity. Drives Anna-style calibration when set.
+      None / null = generic narrator (no voice-specific calibration).
+    examples: [anna, joel, generic]
+
+  genre:
+    type: string
+    description: >
+      Broad genre tag — informational in Phase 1; future use for
+      selecting genre-aware threshold profiles.
+    default: literary-fiction
+    examples: [literary-fiction, literary-sf, technical-nonfiction]
+
+  held_lines_dir:
+    type: [string, "null"]
+    description: >
+      Path (relative to the book repo root) where this book's held-lines
+      exemption files live. Each chapter's exemptions are at
+      <chapter-stem>.held-lines.json beside the chapter markdown.
+
+  detectors:
+    type: object
+    description: >
+      Per-detector configuration overrides. Keyed by detector name from
+      the canonical catalog. Detectors not mentioned use built-in defaults.
+    additionalProperties:
+      type: object
+      additionalProperties: true
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        warning_per_1k:
+          type: [number, "null"]
+        blocker_per_1k:
+          type: [number, "null"]
+        warning_raw_count:
+          type: [integer, "null"]
+        blocker_raw_count:
+          type: [integer, "null"]
+        min_confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.0
+        stopwords:
+          type: array
+          items: { type: string }
+          default: []
+        motifs:
+          type: object
+          description: motif phrase → maximum allowed occurrences per chapter
+          additionalProperties: { type: integer, minimum: 0 }
+        retired_motifs:
+          type: array
+          items: { type: string }
+          default: []
+        filter_words:
+          type: array
+          items: { type: string }
+          default: []
+        self_referential_frames:
+          type: array
+          items: { type: string }
+          default: []
+        routing:
+          type: string
+          enum: [local, remote, prefer_local, prefer_remote]
+          default: local
+        held_lines_path:
+          type: [string, "null"]
+
+  compute:
+    type: object
+    description: >
+      Where prose detectors run for this book. Per ADR-0007: 'remote'
+      always means a server the user owns. Default behavior is fully
+      local.
+    additionalProperties: false
+    properties:
+      cpu_workers:
+        type: integer
+        minimum: 1
+        default: 4
+      gpu_mode:
+        type: string
+        enum: [auto, local, remote, none]
+        default: auto
+      gpu_local_device:
+        type: [string, "null"]
+        description: 'Device specifier, e.g. "cuda:0" or "mps:0". Null = autodetect.'
+      remote_base_url:
+        type: [string, "null"]
+        description: >
+          URL of the user-controlled remote galley API server. Null = no
+          remote backend; pipeline runs fully local. Never points at a
+          third-party SaaS.
+      remote_auth_token_env:
+        type: string
+        default: GALLEY_API_TOKEN
+        description: Environment variable name holding the Bearer token.
+      remote_timeout_seconds:
+        type: integer
+        minimum: 1
+        default: 30
+      cache_dir:
+        type: string
+        default: "~/.galley/cache/prose"

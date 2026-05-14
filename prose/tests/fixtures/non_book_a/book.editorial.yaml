@@ -1,0 +1,33 @@
+# Test fixture — non-book A.
+#
+# Synthetic "literary-fiction" profile with STRICT thresholds. Used to
+# verify the prose pipeline scales detector severity by per-book config.
+# Pairs with sample.md (deliberate anaphora cascade + filler-word density).
+#
+# Expected behavior when running `prose measure` against sample.md with
+# this profile: anaphora and filter_words trigger at warning or blocker.
+
+book_id: non-book-a
+voice: null
+genre: literary-fiction
+held_lines_dir: null
+
+compute:
+  cpu_workers: 2
+  gpu_mode: none           # tests must run without GPU
+  gpu_local_device: null
+  remote_base_url: null
+  remote_auth_token_env: GALLEY_API_TOKEN
+  remote_timeout_seconds: 5
+  cache_dir: "/tmp/galley-test-cache-a"
+
+detectors:
+  anaphora:
+    warning_per_1k: 5.0
+    blocker_per_1k: 12.0
+  filter_word:
+    warning_per_1k: 4.0
+    blocker_per_1k: 10.0
+  lexical_chain_loop:
+    warning_raw_count: 2
+    blocker_raw_count: 5

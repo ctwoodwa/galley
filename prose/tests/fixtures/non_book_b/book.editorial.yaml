@@ -1,0 +1,38 @@
+# Test fixture — non-book B.
+#
+# Synthetic "technical-nonfiction" profile with LOOSE thresholds. Used
+# to verify the prose pipeline can tolerate higher device density when
+# a book's voice intentionally uses devices that would flag in a literary
+# context. Pairs with sample.md (deliberate copula avoidance + signposting).
+#
+# Expected behavior when running `prose measure` against sample.md with
+# this profile: same detectors as non_book_a fire on the prose, but most
+# resolve to 'pass' rather than warning because the thresholds are higher.
+
+book_id: non-book-b
+voice: null
+genre: technical-nonfiction
+held_lines_dir: null
+
+compute:
+  cpu_workers: 2
+  gpu_mode: none
+  gpu_local_device: null
+  remote_base_url: null
+  remote_auth_token_env: GALLEY_API_TOKEN
+  remote_timeout_seconds: 5
+  cache_dir: "/tmp/galley-test-cache-b"
+
+detectors:
+  anaphora:
+    warning_per_1k: 30.0   # loose — anaphora is fine in technical lists
+    blocker_per_1k: 80.0
+  filter_word:
+    warning_per_1k: 50.0   # loose — filter words are part of the register
+    blocker_per_1k: 100.0
+  copula_avoidance:
+    warning_per_1k: 2.0    # strict — "serves as" anti-pattern still flagged
+    blocker_per_1k: 5.0
+  signposting:
+    warning_raw_count: 1
+    blocker_raw_count: 3

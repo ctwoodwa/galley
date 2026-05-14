@@ -1,0 +1,56 @@
+# The Inverted Stack — galley/prose book profile.
+#
+# First-customer profile. Anna-voice calibration. Phase 1 establishes
+# the file and the schema mapping; full Anna decoupling (lifting motif
+# lists, filter-words, stopwords from handcount's hardcoded constants
+# into this yaml) lands in Phase 4 per galley/prose/ROADMAP.md.
+#
+# Until Phase 4: handcount continues to use its hardcoded constants and
+# this profile is consulted only for the few values already wired
+# (book_id, voice, compute config, held_lines_dir).
+
+book_id: the-inverted-stack
+voice: anna
+genre: literary-sf
+held_lines_dir: vol-2/act-1
+
+# Compute routing — fully local by default. The-inverted-stack does not
+# currently use any remote GPU backend; opt-in by setting remote_base_url
+# to the user's own server. Per ADR-0007 (Sunfish local-first commitments).
+compute:
+  cpu_workers: 4
+  gpu_mode: auto
+  gpu_local_device: null
+  remote_base_url: null
+  remote_auth_token_env: GALLEY_API_TOKEN
+  remote_timeout_seconds: 30
+  cache_dir: "~/.galley/cache/prose"
+
+# Detector overrides — empty in Phase 1. Phase 4 populates this section
+# with the Anna calibration lists currently hardcoded in
+# galley/prose/lib/prose_telemetry/handcount/ (when handcount is vendored
+# from the book repo into galley in Phase 1+).
+#
+# Anticipated Phase 4 shape (commented out; not yet active):
+#
+# detectors:
+#   lexical_chain_loop:
+#     stopwords: [protocol, architecture, system, mission, consortium, ...]
+#     warning_raw_count: 8
+#     blocker_raw_count: 20
+#   motif_overuse:
+#     motifs:
+#       "what it claimed to be": 0
+#       "I am going to tell you": 0
+#     retired_motifs: [...]
+#   filter_words:
+#     filter_words: [felt, saw, noticed, realized, observed, ...]
+#     warning_per_1k: 8
+#     blocker_per_1k: 15
+#   self_referential_frame:
+#     self_referential_frames:
+#       - "I am telling you"
+#       - "I am writing this"
+#     warning_raw_count: 1
+#     blocker_raw_count: 2
+detectors: {}
