@@ -1,0 +1,26 @@
+[project]
+name = "prose-cli"
+version = "0.1.0"
+description = "Unified CLI for galley's prose tool family — dispatches to prose-telemetry and story-canon."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "C. T. Wood" }
+]
+license = { text = "MIT" }
+license-files = ["LICENSE"]
+
+dependencies = [
+    "prose-telemetry",
+    "story-canon",
+]
+
+[project.scripts]
+prose = "prose_cli.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prose_cli"]
