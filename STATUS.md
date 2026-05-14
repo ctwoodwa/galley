@@ -38,6 +38,7 @@ medium with the same internal pattern:
 | Vendor-neutral capability slot model — `tts/fast`, `tts/quality`, `stt/fast`, `stt/quality`, `image`, `music` — with families as worker routes and tier as a client-side slot label | `docs/services/README.md` |
 | Settings IA is task-first + progressively-disclosed; section primitives (`SettingsShell`, `SettingsSection`, fields) scoped to `.galley-settings` | `docs/settings/ia.md` |
 | Editorial letterpress aesthetic for /settings (cream paper, deep ink, vermilion accent, Fraunces + Newsreader + JetBrains Mono) | `apps/web/src/components/settings/settings.css` |
+| App-wide theme system via shadcn CSS-variable model — three families (stone / catppuccin / solarized), each with light + dark; mode `auto` follows system preference | `apps/web/src/styles/themes/index.css`, `apps/web/src/app/ThemeProvider.tsx` |
 | Multi-machine deployment topology is Tailscale-connected nodes; pairing via Sunfish HMAC primitive is deferred until non-Tailscale federation matters | This file, *Deployment topology* |
 | Galley-as-Sunfish-accelerator framing is proposed but not yet ratified upstream — coordination beacon to XO is queued | `docs/architecture/galley-as-sunfish-accelerator.md` |
 
@@ -49,7 +50,7 @@ module / environment.
 
 | # | Section | Scope | Status | Storage |
 |---|---|---|---|---|
-| I | Account | user | Placeholder | — |
+| I | Account | user | **Shipped (theme + typography)** | `useThemePrefs` → localStorage; ThemeProvider applies family/mode/font-scale/measure to `<html>` |
 | II | Books | workspace | **Shipped (registry shape)** | `useBookRegistry` → localStorage |
 | III | Services | environment | **Shipped (form shape, reference)** | `useApiConfig.services` → localStorage |
 | IV | Editorial | workspace | **Shipped (form + radio shape)** | `useEditorialPrefs` → localStorage + debounced write-through to `<bookRoot>/.galley/editorial.json`; v3 hydrate-on-mount + reconcile with server-stamped LWW |
@@ -88,6 +89,7 @@ middleware with explicit version bumps and migrate handlers:
 - `galley.editorial-prefs` v3 (v2 dropped `activeBookId`; v3 added
   per-book sync `meta` for hydrate-and-reconcile).
 - `galley.book-registry` v1 (new).
+- `galley.theme-prefs` v1 (new) — `family`, `mode`, `fontScale`, `measure`.
 Each migrate handler is in the same file as the store; one localStorage
 key per store; bump version when the in-memory shape changes.
 

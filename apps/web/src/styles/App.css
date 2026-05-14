@@ -1,24 +1,13 @@
 /* ── Reset & base ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --sidebar-bg: #0f1117;
-  --sidebar-border: #1e2130;
-  --accent: #5b8af5;
-  --accent-dim: #3a5cb8;
-  --text: #e8eaf0;
-  --text-dim: #8b92a8;
-  --text-muted: #555d74;
-  --bg: #14161e;
-  --surface: #1a1d28;
-  --surface-2: #20243a;
-  --green: #3dd68c;
-  --red: #f05252;
-  --radius: 6px;
-  --font: 'Inter', -apple-system, sans-serif;
-  --font-serif: 'Lora', Georgia, serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-}
+/*
+ * Legacy palette `:root {…}` block removed. Variables (--bg, --text,
+ * --accent, …) are now defined in src/styles/tailwind.css and derive
+ * from the active shadcn theme. The font-size + line-height on body
+ * still live here so plaintext typography stays predictable.
+ */
+:root { --radius: 6px; }
 
 html, body, #root { height: 100%; }
 body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.55; }

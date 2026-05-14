@@ -3,41 +3,71 @@
 @tailwind utilities;
 
 /*
- * Phase 1 dual-stack note: Tailwind layers are loaded BEFORE App.css so that
- * App.css's specific selectors (.review-margin-host, .queue-panel, etc.) win
- * for editorial UI. New studio panels use Tailwind utilities + shadcn/ui
- * components.
+ * Galley theme system — shadcn CSS-variable model.
+ *
+ *   themes/index.css        — three palette families × light/dark tokens.
+ *   Legacy bridge (below)   — old --bg/--text/--accent vars now derive
+ *                              from the active palette so existing
+ *                              App.css selectors theme-switch for free.
+ *
+ * Selection is driven by `data-theme="<family>"` + `.dark` on <html>
+ * via the ThemeProvider (mounted in App.jsx).
  */
 
+@import './themes/index.css';
+
 /*
- * Music-panel theme variables. Originally defined in inference-studio's
- * index.css; ported here so the music components under
- * apps/web/src/components/inference/music/ keep their warm-tone palette.
- * The play button explicitly uses dark text on --mp-accent, so --mp-accent
- * must remain light/warm.
- *
- * Tiers explanation:
- *   --mp-bg-1..3 — background depth (1=lowest/darkest, 3=highest/lightest)
- *   --mp-fg-2..4 — text emphasis (2=secondary, 4=most muted)
- *   --mp-line / --mp-line-2 — borders/dividers (2 = lighter)
+ * Legacy variable bridge — maps the names the rest of App.css already
+ * uses onto shadcn tokens. Keep names; replace values. When the
+ * Inference Studio / library / reader CSS migrates to shadcn idioms
+ * (Sprint 2+), entries can retire one by one.
  */
 :root {
-  /* Backgrounds */
+  --bg:             hsl(var(--background));
+  --surface:        hsl(var(--card));
+  --surface-2:      hsl(var(--secondary));
+  --text:           hsl(var(--foreground));
+  --text-dim:       hsl(var(--muted-foreground));
+  --text-muted:     hsl(var(--muted-foreground) / 0.7);
+  --sidebar-bg:     hsl(var(--card));
+  --sidebar-border: hsl(var(--border));
+  --accent:         hsl(var(--primary));
+  --accent-dim:     hsl(var(--primary) / 0.65);
+  --green:          hsl(142 76% 36%);
+  --red:            hsl(var(--destructive));
+  --font:        'Inter', -apple-system, sans-serif;
+  --font-serif:  'Lora', Georgia, serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Writing-surface tokens — consumed by /read and /settings. */
+  --writing-bg:     hsl(var(--writing-paper));
+  --writing-text:   hsl(var(--foreground));
+  --writing-muted:  hsl(var(--muted-foreground));
+  --writing-border: hsl(var(--border));
+
+  /* User-controllable knobs (Account section). */
+  --font-scale: 1;
+  --reader-measure: 70ch;
+}
+
+/*
+ * Music-panel tool theme (`apps/web/src/components/inference/music/`).
+ * Tool-specific palette — intentionally kept warm regardless of the
+ * active theme since the play button hardcodes dark text on
+ * --mp-accent. Will become a `tools/music/` theme module in Sprint 2.
+ */
+:root {
   --mp-bg:   #14110d;
   --mp-bg-1: #1a1612;
   --mp-bg-2: #221d18;
   --mp-bg-3: #2a241e;
-  /* Foregrounds */
   --mp-fg:   #f3eee5;
   --mp-fg-2: #d6cfbf;
   --mp-fg-3: #9c9182;
   --mp-fg-4: #6b5d52;
-  /* Accent + state */
   --mp-accent: #d4a373;
   --mp-danger: #f05252;
-  /* Lines */
   --mp-line:   #2a2520;
   --mp-line-2: #3a322a;
-  /* Waveform dim color */
   --mp-wave-dim: #6b5d52;
 }

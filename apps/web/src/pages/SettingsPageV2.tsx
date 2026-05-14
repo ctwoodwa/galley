@@ -6,6 +6,7 @@ import {
   EditorialSection,
   BooksSection,
   DangerZoneSection,
+  AccountSection,
   SettingsSection,
   type SettingsScope,
 } from '@/components/settings'
@@ -25,12 +26,7 @@ export function SettingsPageV2() {
       label: 'Account',
       icon: <UserCircle size={14} />,
       scope: 'user',
-      Component: PlaceholderSection(
-        'I',
-        'Account',
-        'Identity, theme, bearer-token rotation, device keypair.',
-        'user',
-      ),
+      Component: AccountSection,
     },
     {
       id: 'books',
