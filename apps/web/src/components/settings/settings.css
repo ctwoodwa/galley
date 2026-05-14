@@ -713,21 +713,32 @@
   line-height: 1.5;
 }
 
-/* ─── Slot card (ServicesSection-specific) ─────────────────────────────── */
+/* ─── Entry card — shared registry/slot primitive ──────────────────────── */
+/*  Used by ServicesSection (capability slots, mono titles) and          */
+/*  BooksSection (book registry entries, display-serif titles, active    */
+/*  state). `data-title-variant` switches the title typography.          */
 
-.gs-slot {
+.gs-entry-card {
   display: grid;
   grid-template-columns: 3rem 1fr;
   column-gap: var(--gs-space-4);
-  padding: var(--gs-space-6) 0;
+  padding: var(--gs-space-6) var(--gs-space-4) var(--gs-space-6) var(--gs-space-4);
   border-bottom: 1px solid var(--gs-rule-soft);
+  border-left: 2px solid transparent;
+  margin-left: -2px;
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.gs-slot:last-child {
+.gs-entry-card:last-child {
   border-bottom: none;
 }
 
-.gs-slot-numeral {
+.gs-entry-card.active {
+  border-left-color: var(--gs-vermilion);
+  background: rgba(193, 59, 30, 0.04);
+}
+
+.gs-entry-numeral {
   font-family: var(--gs-serif-display);
   font-variation-settings: 'opsz' 96, 'wght' 300, 'SOFT' 80;
   font-style: italic;
@@ -738,14 +749,14 @@
   padding-top: 0.2rem;
 }
 
-.gs-slot-body {
+.gs-entry-body {
   display: flex;
   flex-direction: column;
   gap: var(--gs-space-4);
   min-width: 0;
 }
 
-.gs-slot-header {
+.gs-entry-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -753,7 +764,7 @@
   flex-wrap: wrap;
 }
 
-.gs-slot-id {
+.gs-entry-card[data-title-variant='mono'] .gs-entry-title {
   font-family: var(--gs-mono);
   font-size: var(--gs-text-base);
   font-weight: 500;
@@ -761,14 +772,23 @@
   letter-spacing: -0.02em;
 }
 
-.gs-slot-provider {
+.gs-entry-card[data-title-variant='display'] .gs-entry-title {
+  font-family: var(--gs-serif-display);
+  font-variation-settings: 'opsz' 96, 'wght' 500, 'SOFT' 30, 'WONK' 0;
+  font-size: 1.25rem;
+  color: var(--gs-ink);
+  letter-spacing: -0.005em;
+  line-height: 1.15;
+}
+
+.gs-entry-subtitle {
   font-family: var(--gs-serif-text);
   font-style: italic;
   font-size: var(--gs-text-sm);
   color: var(--gs-ink-muted);
 }
 
-.gs-slot-provider::before {
+.gs-entry-subtitle::before {
   content: '— ';
 }
 
@@ -796,36 +816,7 @@
   font-size: var(--gs-text-base);
 }
 
-/* ─── Books section (registry cards) ──────────────────────────────────── */
-
-.gs-book-card {
-  display: grid;
-  grid-template-columns: 3rem 1fr;
-  column-gap: var(--gs-space-4);
-  padding: var(--gs-space-6) var(--gs-space-4) var(--gs-space-6) var(--gs-space-4);
-  border-bottom: 1px solid var(--gs-rule-soft);
-  border-left: 2px solid transparent;
-  margin-left: -2px;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.gs-book-card:last-of-type {
-  border-bottom: none;
-}
-
-.gs-book-card.active {
-  border-left-color: var(--gs-vermilion);
-  background: rgba(193, 59, 30, 0.04);
-}
-
-.gs-book-name {
-  font-family: var(--gs-serif-display);
-  font-variation-settings: 'opsz' 96, 'wght' 500, 'SOFT' 30, 'WONK' 0;
-  font-size: 1.25rem;
-  color: var(--gs-ink);
-  letter-spacing: -0.005em;
-  line-height: 1.15;
-}
+/* ─── Books section — variant-specific helpers ────────────────────────── */
 
 .gs-book-actions {
   display: flex;
@@ -848,6 +839,93 @@
   color: var(--gs-vermilion);
   padding: var(--gs-space-1) var(--gs-space-3);
   border: 1px solid var(--gs-vermilion);
+}
+
+/* ─── ConfirmDialog — portal-rendered modal in editorial register ─────── */
+/*  The dialog is rendered to document.body via createPortal, then wraps */
+/*  its content in `.galley-settings` so the editorial-letterpress theme */
+/*  tokens still resolve inside the portal.                              */
+
+.gs-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gs-space-6);
+  background: rgba(27, 20, 16, 0.55);
+  backdrop-filter: blur(2px);
+  animation: gs-dialog-fade 0.12s ease-out;
+}
+
+@keyframes gs-dialog-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.gs-dialog {
+  background: var(--gs-paper);
+  color: var(--gs-ink);
+  border: 1px solid var(--gs-rule);
+  box-shadow:
+    0 32px 64px -16px rgba(27, 20, 16, 0.4),
+    0 2px 6px -2px rgba(27, 20, 16, 0.3);
+  max-width: 32rem;
+  width: 100%;
+  padding: var(--gs-space-8);
+  position: relative;
+  animation: gs-dialog-rise 0.14s ease-out;
+}
+
+.gs-dialog::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--gs-space-8);
+  right: var(--gs-space-8);
+  height: 2px;
+  background: var(--gs-vermilion);
+}
+
+@keyframes gs-dialog-rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+.gs-dialog-title {
+  font-family: var(--gs-serif-display);
+  font-variation-settings: 'opsz' 144, 'wght' 600, 'SOFT' 30, 'WONK' 1;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--gs-ink);
+  margin: 0 0 var(--gs-space-4);
+}
+
+.gs-dialog-description {
+  font-family: var(--gs-serif-text);
+  font-size: var(--gs-text-base);
+  line-height: 1.55;
+  color: var(--gs-ink-soft);
+  margin-bottom: var(--gs-space-6);
+}
+
+.gs-dialog-description p {
+  margin: 0 0 var(--gs-space-3);
+}
+
+.gs-dialog-description p:last-child {
+  margin-bottom: 0;
+}
+
+.gs-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gs-space-3);
+  padding-top: var(--gs-space-4);
+  border-top: 1px solid var(--gs-rule-soft);
 }
 
 /* Inline add-book form */

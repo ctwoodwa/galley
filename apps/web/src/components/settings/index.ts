@@ -5,6 +5,8 @@ export {
   type SaveState,
 } from './SettingsSection'
 export { AdvancedDisclosure } from './AdvancedDisclosure'
+export { EntryCard, type EntryCardProps } from './EntryCard'
+export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog'
 export {
   type SettingsScope,
   canEdit,

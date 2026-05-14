@@ -3,6 +3,7 @@ import { CAPABILITIES, type CapabilityId, type ServiceConfig } from '@galley/api
 import { useApiConfig } from '@/api/config'
 import { SettingsSection } from '../SettingsSection'
 import { AdvancedDisclosure } from '../AdvancedDisclosure'
+import { EntryCard } from '../EntryCard'
 import { ToggleField } from '../fields/ToggleField'
 import { TextField } from '../fields/TextField'
 import { SecretField } from '../fields/SecretField'
@@ -168,68 +169,62 @@ function ServiceSlotCard({ numeral, capability, slot, onChange }: ServiceSlotCar
   }
 
   return (
-    <div className="gs-slot">
-      <div className="gs-slot-numeral" aria-hidden="true">
-        {numeral}
-      </div>
-      <div className="gs-slot-body">
-        <div className="gs-slot-header">
-          <span className="gs-slot-id">{capability}</span>
-          <span className="gs-slot-provider">
-            {slot.provider || 'unconfigured'}
-          </span>
-        </div>
-        <ToggleField
-          label="Enabled"
-          value={slot.enabled}
-          onChange={(enabled) => onChange({ enabled })}
-          helperText="When off, galley hides UI actions that require this capability."
-        />
-        <SelectField
-          label="Provider"
-          value={slot.provider || ''}
-          onChange={(provider) => onChange({ provider })}
-          options={[
-            { value: '', label: '— select —' },
-            ...PROVIDER_OPTIONS_BY_CAPABILITY[capability],
-          ]}
-          helperText="Informational label — galley does not branch on this."
+    <EntryCard
+      numeral={numeral}
+      title={capability}
+      titleVariant="mono"
+      subtitle={slot.provider || 'unconfigured'}
+    >
+      <ToggleField
+        label="Enabled"
+        value={slot.enabled}
+        onChange={(enabled) => onChange({ enabled })}
+        helperText="When off, galley hides UI actions that require this capability."
+      />
+      <SelectField
+        label="Provider"
+        value={slot.provider || ''}
+        onChange={(provider) => onChange({ provider })}
+        options={[
+          { value: '', label: '— select —' },
+          ...PROVIDER_OPTIONS_BY_CAPABILITY[capability],
+        ]}
+        helperText="Informational label — galley does not branch on this."
+      />
+      <TextField
+        label="Base URL"
+        value={slot.baseUrl}
+        onChange={onUrlChange}
+        inputType="url"
+        placeholder="http://windows-box.tailnet.ts.net:8880"
+        error={urlError}
+        helperText="Leave empty to fall back to the shared default below."
+      />
+      <ActionField
+        label="Test connection"
+        description="GET /health on the configured base URL."
+        buttonLabel="Test"
+        onClick={onTest}
+        resultMessage={testResult}
+        resultKind={testKind}
+        disabled={!slot.baseUrl}
+        emphasis="vermilion"
+      />
+      <AdvancedDisclosure>
+        <SecretField
+          label="API key (bearer token)"
+          value={slot.apiKey}
+          onChange={(apiKey) => onChange({ apiKey })}
+          helperText="Sent as Authorization: Bearer. Empty if the worker requires no auth."
         />
         <TextField
-          label="Base URL"
-          value={slot.baseUrl}
-          onChange={onUrlChange}
-          inputType="url"
-          placeholder="http://windows-box.tailnet.ts.net:8880"
-          error={urlError}
-          helperText="Leave empty to fall back to the shared default below."
+          label="Flavor"
+          value={slot.flavor ?? ''}
+          onChange={(flavor) => onChange({ flavor })}
+          placeholder="standard"
+          helperText="API-shape hint for clients adapting to non-canonical upstream APIs. Set to 'kokoro-local' for Kokoro-FastAPI; leave empty otherwise."
         />
-        <ActionField
-          label="Test connection"
-          description="GET /health on the configured base URL."
-          buttonLabel="Test"
-          onClick={onTest}
-          resultMessage={testResult}
-          resultKind={testKind}
-          disabled={!slot.baseUrl}
-          emphasis="vermilion"
-        />
-        <AdvancedDisclosure>
-          <SecretField
-            label="API key (bearer token)"
-            value={slot.apiKey}
-            onChange={(apiKey) => onChange({ apiKey })}
-            helperText="Sent as Authorization: Bearer. Empty if the worker requires no auth."
-          />
-          <TextField
-            label="Flavor"
-            value={slot.flavor ?? ''}
-            onChange={(flavor) => onChange({ flavor })}
-            placeholder="standard"
-            helperText="API-shape hint for clients adapting to non-canonical upstream APIs. Set to 'kokoro-local' for Kokoro-FastAPI; leave empty otherwise."
-          />
-        </AdvancedDisclosure>
-      </div>
-    </div>
+      </AdvancedDisclosure>
+    </EntryCard>
   )
 }

@@ -7,6 +7,8 @@ import {
   useBooksSorted,
 } from '@/api/bookRegistry'
 import { SettingsSection } from '../SettingsSection'
+import { EntryCard } from '../EntryCard'
+import { ConfirmDialog } from '../ConfirmDialog'
 import { TextField } from '../fields/TextField'
 import { ActionField } from '../fields/ActionField'
 
@@ -15,13 +17,9 @@ import { ActionField } from '../fields/ActionField'
  * API with a registry shape (CRUD over a list of records) rather than
  * the form shape Services and Editorial use.
  *
- * Each book renders as a numbered card following the same editorial-
- * letterpress visual language as the Services slot cards. Active book
- * gets a vermilion left rule. Inline add-book form at the bottom.
- *
- * Remove uses native window.confirm() — a confirm-dialog primitive is
- * deferred until more sections need it (Danger zone will be the
- * forcing function).
+ * Each book renders as an EntryCard with the display-serif title
+ * variant, vermilion left rule when active. Removal goes through the
+ * shared ConfirmDialog primitive in destructive register.
  */
 export function BooksSection() {
   const books = useBooksSorted()
@@ -29,6 +27,7 @@ export function BooksSection() {
   const setActiveBookId = useBookRegistry((s) => s.setActiveBookId)
   const updateBook = useBookRegistry((s) => s.updateBook)
   const removeBook = useBookRegistry((s) => s.removeBook)
+  const [confirmRemove, setConfirmRemove] = useState<BookRecord | null>(null)
 
   return (
     <SettingsSection
@@ -52,14 +51,7 @@ export function BooksSection() {
               canRemove={books.length > 1}
               onSetActive={() => setActiveBookId(book.id)}
               onUpdate={(patch) => updateBook(book.id, patch)}
-              onRemove={() => {
-                const confirmed = window.confirm(
-                  `Remove "${book.displayName}" from the registry?\n\n` +
-                    `This does NOT delete the book repo on disk at:\n${book.repoPath}\n\n` +
-                    `Galley will just forget about it. You can add it back any time.`,
-                )
-                if (confirmed) removeBook(book.id)
-              }}
+              onRemove={() => setConfirmRemove(book)}
             />
           ))
         )}
@@ -70,6 +62,33 @@ export function BooksSection() {
       </div>
 
       <AddBookForm />
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={() => {
+          if (confirmRemove) removeBook(confirmRemove.id)
+        }}
+        title={`Remove "${confirmRemove?.displayName || confirmRemove?.id || ''}"?`}
+        description={
+          <>
+            <p>
+              Galley will forget about this book. You can add it back any
+              time — this does not touch the repo on disk.
+            </p>
+            {confirmRemove?.repoPath ? (
+              <p>
+                Repo path:{' '}
+                <code style={{ fontFamily: 'var(--gs-mono)' }}>
+                  {confirmRemove.repoPath}
+                </code>
+              </p>
+            ) : null}
+          </>
+        }
+        confirmLabel="Remove from registry"
+        confirmKind="destructive"
+      />
     </SettingsSection>
   )
 }
@@ -94,57 +113,54 @@ function BookCard({
   onRemove,
 }: BookCardProps) {
   return (
-    <div className={'gs-book-card' + (isActive ? ' active' : '')}>
-      <div className="gs-slot-numeral" aria-hidden="true">
-        {numeral}
-      </div>
-      <div className="gs-slot-body">
-        <div className="gs-slot-header">
-          <span className="gs-book-name">{book.displayName || book.id}</span>
-          <span className="gs-slot-provider">{book.id}</span>
-        </div>
-        <TextField
-          label="Display name"
-          value={book.displayName}
-          onChange={(v) => onUpdate({ displayName: v })}
-          placeholder={book.id}
-          helperText="How this book appears in galley UI. Defaults to its id when blank."
-        />
-        <TextField
-          label="Repo path on this machine"
-          value={book.repoPath}
-          onChange={(v) => onUpdate({ repoPath: v })}
-          placeholder="~/Projects/SunfishSoftware/your-book"
-          helperText="Absolute path to the book repo on this device. Per-machine — does not sync."
-        />
-        <div className="gs-book-actions">
-          {isActive ? (
-            <span className="gs-book-active-badge" aria-hidden="false">
-              <Check size={13} aria-hidden="true" /> active book
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={onSetActive}
-              className="gs-button vermilion"
-            >
-              Set as active
-            </button>
-          )}
+    <EntryCard
+      numeral={numeral}
+      title={book.displayName || book.id}
+      titleVariant="display"
+      subtitle={book.id}
+      active={isActive}
+    >
+      <TextField
+        label="Display name"
+        value={book.displayName}
+        onChange={(v) => onUpdate({ displayName: v })}
+        placeholder={book.id}
+        helperText="How this book appears in galley UI. Defaults to its id when blank."
+      />
+      <TextField
+        label="Repo path on this machine"
+        value={book.repoPath}
+        onChange={(v) => onUpdate({ repoPath: v })}
+        placeholder="~/Projects/SunfishSoftware/your-book"
+        helperText="Absolute path to the book repo on this device. Per-machine — does not sync."
+      />
+      <div className="gs-book-actions">
+        {isActive ? (
+          <span className="gs-book-active-badge" aria-hidden="false">
+            <Check size={13} aria-hidden="true" /> active book
+          </span>
+        ) : (
           <button
             type="button"
-            onClick={onRemove}
-            disabled={!canRemove}
-            className="gs-button destructive"
-            title={
-              !canRemove ? "Can't remove the last book in the registry." : undefined
-            }
+            onClick={onSetActive}
+            className="gs-button vermilion"
           >
-            <Trash2 size={13} aria-hidden="true" /> Remove
+            Set as active
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={!canRemove}
+          className="gs-button destructive"
+          title={
+            !canRemove ? "Can't remove the last book in the registry." : undefined
+          }
+        >
+          <Trash2 size={13} aria-hidden="true" /> Remove
+        </button>
       </div>
-    </div>
+    </EntryCard>
   )
 }
 
