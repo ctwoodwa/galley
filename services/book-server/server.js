@@ -1,6 +1,7 @@
 import express from 'express'
 import path from 'path'
 import fs from 'fs'
+import os from 'os'
 import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { randomBytes } from 'crypto'
@@ -173,16 +174,110 @@ function extractTitle(stem, filePath) {
     .replace(/\b\w/g, l => l.toUpperCase())
 }
 
+// Discover one or more roots under bookRoot to scan for chapter .md files.
+// Supports several layouts (tried in order):
+//   - legacy:    bookRoot/chapters/...
+//   - multi-vol: bookRoot/vol-1/, bookRoot/vol-2/, ...
+//   - nested-vol: bookRoot is itself named vol-N (or contains act-*/part-*/)
+//   - flat:      bookRoot/*.md or bookRoot/<any-dir-with-.md-files>
+// Returns [{root: absolute, prefix: <path-relative-to-bookRoot>, volId}].
+// `prefix` is what gets prepended to relative paths to form source_path;
+// `volId` is the volume id used for audio namespacing and chapter ids.
+const SKIP_DIR_PREFIXES = ['.', '_', 'node_modules', 'build', 'dist', 'output']
+
+function _isContentDir(name) {
+  return !SKIP_DIR_PREFIXES.some(p => name === p || name.startsWith(p))
+}
+
+function _hasMarkdownDescendant(dir, depth = 0) {
+  if (depth > 3) return false
+  let entries
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return false }
+  for (const e of entries) {
+    if (e.isFile() && e.name.endsWith('.md')) return true
+    if (e.isDirectory() && _isContentDir(e.name)) {
+      if (_hasMarkdownDescendant(path.join(dir, e.name), depth + 1)) return true
+    }
+  }
+  return false
+}
+
+function resolveChapterRoots(bookRoot) {
+  if (!fs.existsSync(bookRoot)) return []
+  const rootBasename = path.basename(bookRoot)
+
+  // Each returned root carries three concepts:
+  //   - root:         absolute filesystem path to scan
+  //   - onDiskPrefix: relative-to-bookRoot path; used for source_path so the
+  //                   file can be read at `path.join(bookRoot, source_path)`
+  //   - idPrefix:     used for CHAPTER_PRESET_MAP lookups (audiobook.py keys
+  //                   are like "vol-2/act-1/ch01-departure")
+  //   - volId:        volume namespace for chapter id + audio dir
+
+  // Pattern 1 — legacy: bookRoot/chapters/
+  const legacy = path.join(bookRoot, 'chapters')
+  if (fs.existsSync(legacy) && fs.statSync(legacy).isDirectory()) {
+    return [{ root: legacy, onDiskPrefix: 'chapters', idPrefix: 'chapters', volId: 'vol-1' }]
+  }
+
+  const dirEntries = fs.readdirSync(bookRoot, { withFileTypes: true })
+  const subdirs = dirEntries.filter(e => e.isDirectory() && _isContentDir(e.name))
+
+  // Pattern 2 — multi-volume: bookRoot/vol-1, bookRoot/vol-2, ...
+  const volDirs = subdirs.filter(e => /^vol-/i.test(e.name)).sort((a, b) => a.name.localeCompare(b.name))
+  if (volDirs.length > 0) {
+    return volDirs.map(e => ({
+      root: path.join(bookRoot, e.name),
+      onDiskPrefix: e.name,
+      idPrefix: e.name,
+      volId: e.name,
+    }))
+  }
+
+  // Pattern 3 — nested-vol: bookRoot itself IS a volume (named vol-N) or
+  // contains act-*/part-*/section-* subdirs. On-disk prefix is empty (the
+  // act-* dirs are direct children of bookRoot); id prefix carries the
+  // volume name so preset-map lookups still match audiobook.py keys.
+  const isVolNamed = /^vol-/i.test(rootBasename)
+  const sectionDirs = subdirs.filter(e => /^(act|part|section|chapter)-/i.test(e.name))
+  if (isVolNamed || sectionDirs.length > 0) {
+    return [{
+      root: bookRoot,
+      onDiskPrefix: '',
+      idPrefix: isVolNamed ? rootBasename : '',
+      volId: isVolNamed ? rootBasename : 'vol-1',
+    }]
+  }
+
+  // Pattern 4 — flat: bookRoot has .md files directly, OR bookRoot has
+  // arbitrary subdirs with .md descendants.
+  const hasDirectMd = dirEntries.some(e => e.isFile() && e.name.endsWith('.md'))
+  const hasNestedMd = subdirs.some(e => _hasMarkdownDescendant(path.join(bookRoot, e.name)))
+  if (hasDirectMd || hasNestedMd) {
+    return [{ root: bookRoot, onDiskPrefix: '', idPrefix: '', volId: 'vol-1' }]
+  }
+
+  return []
+}
+
 function buildCatalog(book) {
   const { id, bookRoot, volumes = [] } = book
-  const chaptersDir = path.join(bookRoot, 'chapters')
-  const audioDir    = bookAudioDir(id)
+  const audioDir    = resolveBookAudioDir(book)
 
   const volIds = volumes.map(v => v.id)
 
-  // Pre-scan each volume's audio dir once
+  // Pre-scan each volume's audio dir once. For declared volumes, scan exactly
+  // those; for auto-detect mode (volumes.length === 0), scan whatever vol-*
+  // dirs already exist under audioDir.
   const volFiles = {}
-  for (const vol of volIds) {
+  const audioVolDirs = volIds.length > 0
+    ? volIds
+    : (fs.existsSync(audioDir)
+        ? fs.readdirSync(audioDir, { withFileTypes: true })
+            .filter(e => e.isDirectory() && /^vol-/i.test(e.name))
+            .map(e => e.name)
+        : [])
+  for (const vol of audioVolDirs) {
     const dir = path.join(audioDir, vol)
     volFiles[vol] = fs.existsSync(dir) ? fs.readdirSync(dir) : []
   }
@@ -190,12 +285,20 @@ function buildCatalog(book) {
   const chapters = []
 
   if (volumes.length > 0) {
-    // Structured scan using declared sections
+    // Structured scan using declared sections. Each section.dir is
+    // resolved relative to bookRoot directly (supports vol-1/act-1/...
+    // style) with fallback to legacy bookRoot/chapters/<section.dir>.
     for (const vol of volumes) {
       for (const section of vol.sections || []) {
-        const sectionDir = path.join(chaptersDir, section.dir)
-        if (!fs.existsSync(sectionDir)) continue
-        for (const file of fs.readdirSync(sectionDir).filter(f => f.endsWith('.md')).sort()) {
+        const candidates = [
+          { root: path.join(bookRoot, section.dir), prefix: section.dir },
+          { root: path.join(bookRoot, 'chapters', section.dir),
+            prefix: path.join('chapters', section.dir) },
+        ]
+        const found = candidates.find(c =>
+          fs.existsSync(c.root) && fs.statSync(c.root).isDirectory())
+        if (!found) continue
+        for (const file of fs.readdirSync(found.root).filter(f => f.endsWith('.md')).sort()) {
           const stem = file.replace('.md', '')
           const audioFiles = (volFiles[vol.id] || []).filter(f =>
             f.endsWith('.mp3') && f.startsWith(stem) && !f.includes('__')
@@ -206,37 +309,57 @@ function buildCatalog(book) {
             volume: vol.id,
             section: section.group,
             section_label: section.label,
-            source_path: path.join('chapters', section.dir, file),
+            source_path: path.join(found.prefix, file),
+            preset_key: path.join(vol.id, section.dir, file).replace(/\.md$/, ''),
             audio_path: path.join(audioDir, vol.id, `${stem}.mp3`),
             audio_files: audioFiles,
             has_audio: audioFiles.length > 0,
-            title: extractTitle(stem, path.join(sectionDir, file)),
+            title: extractTitle(stem, path.join(found.root, file)),
           })
         }
       }
     }
   } else {
-    // Auto-detect: flat recursive scan of chapters/
-    if (!fs.existsSync(chaptersDir)) return chapters
-    const scanDir = (dir, relDir) => {
-      for (const entry of fs.readdirSync(dir).sort()) {
-        const full = path.join(dir, entry)
-        const rel  = path.join(relDir, entry)
-        if (fs.statSync(full).isDirectory()) {
-          scanDir(full, rel)
-        } else if (entry.endsWith('.md')) {
-          const stem = entry.replace('.md', '')
-          const volId = relDir.startsWith('vol-') ? relDir.split('/')[0] : 'vol-1'
+    // Auto-detect: walk one or more chapter roots discovered under bookRoot.
+    const roots = resolveChapterRoots(bookRoot)
+    if (roots.length === 0) return chapters
+    const scanDir = (dir, relDir, rootCfg) => {
+      let entries
+      try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
+      for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+        if (entry.isDirectory() && !_isContentDir(entry.name)) continue
+        const full = path.join(dir, entry.name)
+        const rel  = relDir ? path.join(relDir, entry.name) : entry.name
+        if (entry.isDirectory()) {
+          scanDir(full, rel, rootCfg)
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          const stem = entry.name.replace('.md', '')
+          // Volume id resolution. In legacy `chapters/vol-1/...` the actual
+          // volume is encoded in the first segment of relDir; otherwise use
+          // the root's declared volId.
+          let volId = rootCfg.volId
+          if (rootCfg.onDiskPrefix === 'chapters' && relDir) {
+            const head = relDir.split(path.sep)[0]
+            if (/^vol-/i.test(head)) volId = head
+          }
           const audioFiles = (volFiles[volId] || []).filter(f =>
             f.endsWith('.mp3') && f.startsWith(stem) && !f.includes('__')
           )
+          const section = relDir || rootCfg.onDiskPrefix || 'main'
           chapters.push({
             id: `${volId}-${stem}`,
             slug: stem,
             volume: volId,
-            section: relDir || 'main',
-            section_label: relDir || 'Main',
-            source_path: path.join('chapters', rel),
+            section,
+            section_label: section,
+            // source_path: ON-DISK relative to bookRoot (used by readFileSync)
+            source_path: rootCfg.onDiskPrefix
+              ? path.join(rootCfg.onDiskPrefix, rel)
+              : rel,
+            // preset_key: ID-NAMESPACE relative (used to match CHAPTER_PRESET_MAP)
+            preset_key: rootCfg.idPrefix
+              ? path.join(rootCfg.idPrefix, rel).replace(/\.md$/, '')
+              : rel.replace(/\.md$/, ''),
             audio_path: path.join(audioDir, volId, `${stem}.mp3`),
             audio_files: audioFiles,
             has_audio: audioFiles.length > 0,
@@ -245,7 +368,7 @@ function buildCatalog(book) {
         }
       }
     }
-    scanDir(chaptersDir, '')
+    for (const r of roots) scanDir(r.root, '', r)
   }
 
   return chapters
@@ -261,8 +384,55 @@ const GALLEY_BUILD_ROOT = process.env.GALLEY_BUILD_ROOT
 
 function bookBuildDir(bookId)    { return path.join(GALLEY_BUILD_ROOT, bookId) }
 function bookOutputDir(bookId)   { return path.join(bookBuildDir(bookId), 'output') }
-function bookAudioDir(bookId)    { return path.join(bookOutputDir(bookId), 'audiobook') }
+function defaultBookAudioDir(bookId) { return path.join(bookOutputDir(bookId), 'audiobook') }
 function bookAlignmentDir(bookId){ return path.join(bookBuildDir(bookId), 'alignments') }
+
+// Resolve the audiobook directory for a book. Three-tier:
+//   1. Explicit `book.audioRoot` if set and existing on disk
+//   2. Auto-discovered sibling under GALLEY_BUILD_ROOT (see discoverAudioRoot)
+//   3. Default per-book location at galley/build/<id>/output/audiobook/
+// The default is also returned for fresh books so audio rendered for them
+// lands in the canonical place.
+function resolveBookAudioDir(book) {
+  if (book.audioRoot) {
+    return book.audioRoot
+  }
+  return defaultBookAudioDir(book.id)
+}
+
+// Scan sibling book build dirs for audio matching this book's volumes and
+// chapter slugs. Returns the first candidate audioRoot with ≥1 matching mp3,
+// or null if none. Used during add-book to migrate existing audio without
+// requiring the user to know where it lives.
+function discoverAudioRoot(volIds, slugs) {
+  if (!fs.existsSync(GALLEY_BUILD_ROOT)) return null
+  const slugSet = new Set(slugs)
+  let candidates
+  try {
+    candidates = fs.readdirSync(GALLEY_BUILD_ROOT, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => path.join(GALLEY_BUILD_ROOT, e.name, 'output', 'audiobook'))
+      .filter(p => fs.existsSync(p) && fs.statSync(p).isDirectory())
+  } catch { return null }
+  for (const candidate of candidates) {
+    let matched = 0
+    for (const vol of volIds) {
+      const volPath = path.join(candidate, vol)
+      if (!fs.existsSync(volPath)) continue
+      try {
+        const mp3s = fs.readdirSync(volPath).filter(f => f.endsWith('.mp3'))
+        for (const mp3 of mp3s) {
+          const stem = mp3.replace(/\.mp3$/, '').split('--')[0]
+          if (slugSet.has(stem)) matched++
+        }
+      } catch { /* ignore */ }
+    }
+    if (matched > 0) {
+      return { audioRoot: candidate, matched }
+    }
+  }
+  return null
+}
 
 // ── Per-book runtime state ────────────────────────────────────────────────────
 
@@ -270,11 +440,27 @@ const bookData = new Map()
 
 function initBook(book) {
   const { id, bookRoot, volumes = [] } = book
-  const audioDir   = bookAudioDir(id)
   const volIds     = volumes.map(v => v.id)
-  const logDir     = path.join(audioDir, '_logs')
-  const chaptersDir = path.join(bookRoot, 'chapters')
+  const chapterRoots = resolveChapterRoots(bookRoot)
   const alignmentDir = bookAlignmentDir(id)
+
+  // Resolve audio root: explicit > auto-discovered > default. If
+  // auto-discovered, persist it on the book record so the choice is sticky.
+  if (!book.audioRoot) {
+    const probe = buildCatalog(book)
+    const probeVols = [...new Set(probe.map(c => c.volume))]
+    const probeSlugs = probe.map(c => c.slug)
+    const found = discoverAudioRoot(probeVols, probeSlugs)
+    if (found) {
+      book.audioRoot = found.audioRoot
+      console.log(`[book] ${id}: auto-discovered audioRoot ${found.audioRoot} (${found.matched} matching mp3s)`)
+      // Persist so future loads skip the probe.
+      const libBook = library.books.find(b => b.id === id)
+      if (libBook) { libBook.audioRoot = found.audioRoot; saveLibrary(library) }
+    }
+  }
+  const audioDir   = resolveBookAudioDir(book)
+  const logDir     = path.join(audioDir, '_logs')
 
   const chapters       = buildCatalog(book)
   const chapterPresetMap = loadChapterPresetMap(bookRoot)
@@ -291,7 +477,7 @@ function initBook(book) {
   } catch { reviewSession = newSession() }
 
   bookData.set(id, {
-    book, chaptersDir, audioDir, alignmentDir, logDir, volIds,
+    book, chapterRoots, audioDir, alignmentDir, logDir, volIds,
     chapters, chapterPresetMap, manifestDefaults, sidecarDefaults, mp3TagDefaults,
     reviewSession, reviewSessionFile,
     paoInboxDir: path.join(bookRoot, '.pao-inbox'),
@@ -349,11 +535,14 @@ function scheduleRebuild(bookId, reason) {
 }
 
 function watchBook(bookId, data) {
-  const { chaptersDir, audioDir, book, volIds } = data
+  const { chapterRoots = [], audioDir, book, volIds } = data
 
-  if (fs.existsSync(chaptersDir)) {
-    fs.watch(chaptersDir, { recursive: true }, (event, filename) => {
-      if (filename && filename.endsWith('.md')) scheduleRebuild(bookId, `chapters/${filename} ${event}`)
+  for (const r of chapterRoots) {
+    if (!fs.existsSync(r.root)) continue
+    fs.watch(r.root, { recursive: true }, (event, filename) => {
+      if (filename && filename.endsWith('.md')) {
+        scheduleRebuild(bookId, `${r.prefix}/${filename} ${event}`)
+      }
     })
   }
 
@@ -576,7 +765,7 @@ app.get('/api/books', (_req, res) => {
 })
 
 app.post('/api/books', (req, res) => {
-  const { id, title, bookRoot } = req.body
+  const { id, title, bookRoot, audioRoot } = req.body
   if (!id || !title || !bookRoot) {
     return res.status(400).json({ error: 'id, title, and bookRoot are required' })
   }
@@ -586,16 +775,108 @@ app.post('/api/books', (req, res) => {
   if (!fs.existsSync(bookRoot)) {
     return res.status(400).json({ error: `bookRoot does not exist: ${bookRoot}` })
   }
+  if (audioRoot && !fs.existsSync(audioRoot)) {
+    return res.status(400).json({ error: `audioRoot does not exist: ${audioRoot}` })
+  }
   const book = { id, title, bookRoot, volumes: [] }
+  if (audioRoot) book.audioRoot = audioRoot
   library.books.push(book)
   saveLibrary(library)
   try {
-    const data = initBook(book)
+    const data = initBook(book)  // may mutate book.audioRoot if auto-discovered
     watchBook(id, data)
   } catch (e) {
     console.error(`[book] init failed for "${id}":`, e.message)
   }
-  res.json({ id, title, bookRoot, chapter_count: bookData.get(id)?.chapters.length ?? 0 })
+  const stored = library.books.find(b => b.id === id) || book
+  res.json({
+    id, title, bookRoot,
+    audioRoot: stored.audioRoot || null,
+    chapter_count: bookData.get(id)?.chapters.length ?? 0,
+  })
+})
+
+// Suggest an audioRoot for a candidate bookRoot before the user commits to
+// adding the book. The UI calls this after the user picks bookRoot, so the
+// "Audio root" field can be pre-filled with the discovered path.
+app.post('/api/books/discover-audio-root', (req, res) => {
+  const { bookRoot } = req.body
+  if (!bookRoot || !fs.existsSync(bookRoot)) {
+    return res.status(400).json({ error: 'bookRoot is required and must exist' })
+  }
+  // Pre-flight a catalog scan to learn vols + slugs.
+  const fakeBook = { id: '__discovery__', bookRoot, volumes: [] }
+  const probe = buildCatalog(fakeBook)
+  if (probe.length === 0) {
+    return res.json({ audioRoot: null, matched: 0, chapter_count: 0 })
+  }
+  const probeVols = [...new Set(probe.map(c => c.volume))]
+  const probeSlugs = probe.map(c => c.slug)
+  const found = discoverAudioRoot(probeVols, probeSlugs)
+  res.json({
+    audioRoot: found?.audioRoot || null,
+    matched: found?.matched || 0,
+    chapter_count: probe.length,
+    volumes: probeVols,
+    default: defaultBookAudioDir('<book-id>'),  // for UI helper text
+  })
+})
+
+// ── Filesystem browser (used by the directory-picker in the library UI) ──────
+// Returns directory entries under a path. Restricted to under $HOME to avoid
+// exposing arbitrary filesystem paths to the page. Symlinks pointing outside
+// the home root are not followed; their target is reported as-is but not
+// recursable.
+
+const FS_BROWSE_ROOT = os.homedir()
+
+function _isUnderHome(absPath) {
+  const resolved = path.resolve(absPath)
+  const home = path.resolve(FS_BROWSE_ROOT)
+  return resolved === home || resolved.startsWith(home + path.sep)
+}
+
+app.get('/api/fs/browse', (req, res) => {
+  let target = req.query.path ? String(req.query.path) : FS_BROWSE_ROOT
+  target = path.resolve(target)
+  if (!_isUnderHome(target)) {
+    return res.status(403).json({ error: 'Access restricted to home directory and subfolders' })
+  }
+  if (!fs.existsSync(target)) {
+    return res.status(404).json({ error: `Path does not exist: ${target}` })
+  }
+  const stat = fs.statSync(target)
+  if (!stat.isDirectory()) {
+    return res.status(400).json({ error: 'Path is not a directory' })
+  }
+  let entries
+  try {
+    entries = fs.readdirSync(target, { withFileTypes: true })
+  } catch (e) {
+    return res.status(403).json({ error: `Cannot read directory: ${e.message}` })
+  }
+  const dirs = entries
+    .filter(e => !e.name.startsWith('.'))  // skip hidden files
+    .map(e => {
+      const full = path.join(target, e.name)
+      let isDirectory = e.isDirectory()
+      // Resolve symlinks for the isDirectory hint only.
+      if (e.isSymbolicLink()) {
+        try { isDirectory = fs.statSync(full).isDirectory() } catch { isDirectory = false }
+      }
+      return { name: e.name, isDirectory }
+    })
+    .sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+  const parent = target === FS_BROWSE_ROOT ? null : path.dirname(target)
+  res.json({
+    path: target,
+    parent,
+    home: FS_BROWSE_ROOT,
+    entries: dirs,
+  })
 })
 
 app.delete('/api/books/:bookId', (req, res) => {
@@ -613,7 +894,8 @@ app.delete('/api/books/:bookId', (req, res) => {
 function chapterListResponse(data) {
   const { chapters, chapterPresetMap, manifestDefaults, sidecarDefaults, mp3TagDefaults } = data
   return chapters.map(ch => {
-    const relPath = ch.source_path.replace(/^chapters\//, '').replace(/\.md$/, '')
+    const relPath = ch.preset_key
+      || ch.source_path.replace(/^chapters\//, '').replace(/\.md$/, '')
     const tracks = ch.audio_files.map(filename => {
       const fileKey = filename.replace(/\.mp3$/, '')
       const stem    = ch.slug
@@ -904,7 +1186,8 @@ app.get('/api/books/:bookId/chapters/:id/render-defaults', (req, res) => {
   const fromManifest = manifestDefaults[chapter.slug]
   if (fromManifest) return res.json({ ...fromManifest, source: 'manifest' })
 
-  const relPath = chapter.source_path.replace(/^chapters\//, '').replace(/\.md$/, '')
+  const relPath = chapter.preset_key
+    || chapter.source_path.replace(/^chapters\//, '').replace(/\.md$/, '')
   const preset  = chapterPresetMap[chapter.slug] ?? chapterPresetMap[relPath] ?? null
   if (preset) return res.json({ engine: 'chatterbox', preset, voice: '', source: 'chapter-map' })
 

@@ -3512,6 +3512,244 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   cursor: pointer;
 }
 
+/* ── Library form discovery panel ────────────────────────────────────────── */
+
+.library-form-discovery {
+  background: rgba(96, 175, 255, 0.08);
+  border: 1px solid rgba(96, 175, 255, 0.25);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.library-form-discovery-audio {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.library-form-discovery-audio code {
+  font-family: ui-monospace, monospace;
+  background: rgba(255,255,255,0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.library-form-discovery-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Directory picker ────────────────────────────────────────────────────── */
+
+.dirpicker-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.dirpicker-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dirpicker-browse-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dirpicker-browse-btn:hover {
+  background: var(--surface-2, rgba(255,255,255,0.04));
+}
+
+.dirpicker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dirpicker-modal {
+  background: var(--bg, #1a1a1a);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: min(640px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dirpicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dirpicker-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.dirpicker-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.dirpicker-close:hover { color: var(--text); }
+
+.dirpicker-pathbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--surface-2, rgba(255,255,255,0.03));
+  border-bottom: 1px solid var(--border);
+}
+
+.dirpicker-nav-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dirpicker-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dirpicker-nav-btn:hover:not(:disabled) {
+  background: var(--surface-3, rgba(255,255,255,0.06));
+}
+
+.dirpicker-cwd {
+  flex: 1;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;       /* keep the leaf visible when path is long */
+  text-align: left;
+}
+
+.dirpicker-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.dirpicker-loading,
+.dirpicker-empty {
+  padding: 12px 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.dirpicker-error {
+  padding: 8px 16px;
+  background: rgba(220, 60, 60, 0.12);
+  color: #ff8888;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(220, 60, 60, 0.3);
+}
+
+.dirpicker-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 16px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dirpicker-entry:hover:not(:disabled) {
+  background: var(--surface-2, rgba(255,255,255,0.04));
+}
+
+.dirpicker-entry:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dirpicker-entry.is-file {
+  color: var(--text-muted);
+}
+
+.dirpicker-entry-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.dirpicker-entry-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirpicker-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.dirpicker-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dirpicker-select {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dirpicker-select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── Sidebar library link ─────────────────────────────────────────────────── */
 
 .sidebar-library-link {

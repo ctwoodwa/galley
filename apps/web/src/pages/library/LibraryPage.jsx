@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import DirectoryPicker from '../../components/DirectoryPicker.jsx'
 
 export default function LibraryPage() {
   const navigate = useNavigate()
   const [books, setBooks]     = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding]   = useState(false)
-  const [form, setForm]       = useState({ id: '', title: '', bookRoot: '' })
+  const [form, setForm]       = useState({ id: '', title: '', bookRoot: '', audioRoot: '' })
   const [error, setError]     = useState('')
+  const [discovery, setDiscovery] = useState(null)  // {audioRoot, matched, chapter_count, volumes}
 
   useEffect(() => {
     fetch('/api/books')
@@ -29,7 +31,8 @@ export default function LibraryPage() {
       if (!r.ok) { setError(data.error || 'Failed to add book'); return }
       setBooks(prev => [...prev, data])
       setAdding(false)
-      setForm({ id: '', title: '', bookRoot: '' })
+      setForm({ id: '', title: '', bookRoot: '', audioRoot: '' })
+      setDiscovery(null)
     } catch (err) {
       setError(err.message)
     }
@@ -45,6 +48,37 @@ export default function LibraryPage() {
 
   const deriveId = (title) =>
     title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+  // Probe the backend for chapter count + audio-root candidate whenever the
+  // chosen bookRoot changes. Debounced via the useEffect's cleanup function.
+  useEffect(() => {
+    if (!form.bookRoot || !form.bookRoot.startsWith('/')) {
+      setDiscovery(null)
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch('/api/books/discover-audio-root', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookRoot: form.bookRoot }),
+        })
+        const data = await r.json()
+        if (cancelled) return
+        if (!r.ok) { setDiscovery(null); return }
+        setDiscovery(data)
+        // If the user hasn't typed their own audioRoot, pre-fill with discovered.
+        if (data.audioRoot && !form.audioRoot) {
+          setForm(f => f.audioRoot ? f : { ...f, audioRoot: data.audioRoot })
+        }
+      } catch {
+        if (!cancelled) setDiscovery(null)
+      }
+    }, 400)
+    return () => { cancelled = true; clearTimeout(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.bookRoot])
 
   return (
     <div className="library-page">
@@ -122,16 +156,44 @@ export default function LibraryPage() {
             </label>
             <label>
               Book root path
-              <input
+              <DirectoryPicker
                 value={form.bookRoot}
-                onChange={e => setForm(f => ({ ...f, bookRoot: e.target.value }))}
+                onChange={(p) => setForm(f => ({ ...f, bookRoot: p }))}
                 placeholder="/Users/you/Projects/my-book"
                 required
               />
             </label>
+            {discovery && discovery.chapter_count > 0 && (
+              <div className="library-form-discovery">
+                <div>
+                  Detected <strong>{discovery.chapter_count}</strong> chapter{discovery.chapter_count !== 1 ? 's' : ''}
+                  {discovery.volumes?.length > 0 && (
+                    <span> in {discovery.volumes.join(', ')}</span>
+                  )}
+                </div>
+                {discovery.audioRoot ? (
+                  <div className="library-form-discovery-audio">
+                    Found existing audio: <code>{discovery.audioRoot}</code>
+                    {' '}({discovery.matched} matching mp3{discovery.matched !== 1 ? 's' : ''})
+                  </div>
+                ) : (
+                  <div className="library-form-discovery-audio library-form-discovery-empty">
+                    No existing audio found — new audio will render to Galley's default location.
+                  </div>
+                )}
+              </div>
+            )}
+            <label>
+              Audio root path <span className="library-form-hint">(optional; auto-detected or leave blank for default)</span>
+              <DirectoryPicker
+                value={form.audioRoot}
+                onChange={(p) => setForm(f => ({ ...f, audioRoot: p }))}
+                placeholder={discovery?.audioRoot || 'Galley default location'}
+              />
+            </label>
             <div className="library-form-actions">
               <button type="submit" className="library-form-submit">Add</button>
-              <button type="button" className="library-form-cancel" onClick={() => { setAdding(false); setError('') }}>Cancel</button>
+              <button type="button" className="library-form-cancel" onClick={() => { setAdding(false); setError(''); setDiscovery(null) }}>Cancel</button>
             </div>
           </form>
         </div>
