@@ -258,6 +258,47 @@ class BookProfile:
             data = yaml.safe_load(f) or {}
         return cls.from_dict(data)
 
+    @classmethod
+    def from_book_root(
+        cls,
+        book_root: Path | str,
+        *,
+        yaml_filename: str = "book.editorial.yaml",
+    ) -> "BookProfile":
+        """Load `<book_root>/book.editorial.yaml` and apply the galley UI
+        overlay sidecar at `<book_root>/.galley/editorial.json` if present.
+
+        The yaml is the author-owned pipeline config (detector thresholds,
+        held-lines, compute routing). The sidecar is the galley UI overlay
+        (preset scales thresholds; active_voice overrides voice). When the
+        yaml is absent, a minimal default profile is returned. When the
+        sidecar is absent, the yaml is returned unmodified.
+
+        See `apply_editorial_overlay` for overlay semantics.
+        """
+        root = Path(book_root)
+        yaml_path = root / yaml_filename
+        if yaml_path.exists():
+            profile = cls.from_yaml(yaml_path)
+        else:
+            profile = cls(book_id=root.name)
+
+        overlay_path = root / ".galley" / "editorial.json"
+        if overlay_path.exists():
+            try:
+                import json
+                with open(overlay_path, encoding="utf-8") as f:
+                    overlay_doc = json.load(f) or {}
+                prefs = overlay_doc.get("prefs") or {}
+                if prefs:
+                    profile = apply_editorial_overlay(profile, prefs)
+            except (OSError, ValueError):
+                # Malformed sidecar — fall back to yaml-only profile rather
+                # than crashing the pipeline. The UI is the source of truth
+                # for the sidecar and will overwrite next save.
+                pass
+        return profile
+
     def detector(self, name: str) -> DetectorConfig:
         """Return the config for `name`, or a fresh default if unset."""
         return self.detectors.get(name, DetectorConfig())
@@ -279,6 +320,98 @@ class BookProfile:
         out["compute"] = asdict(self.compute)
         out.update(self.extra)
         return out
+
+
+# ─── Editorial overlay (galley UI sidecar) ─────────────────────────────────
+
+# Preset → threshold scaling factor. Multiplied into every detector's
+# warning_per_1k / blocker_per_1k / warning_raw_count / blocker_raw_count
+# when the field is non-None. Higher factor = higher threshold = fewer
+# findings ("gentle"); lower factor = lower threshold = more findings
+# ("strict"). Standard is identity so the yaml's tuned thresholds pass
+# through unchanged.
+PROSE_PRESET_FACTORS: dict[str, float] = {
+    "gentle":   1.5,
+    "standard": 1.0,
+    "strict":   0.7,
+}
+
+
+def _scale_threshold(value: float | int | None, factor: float, *, integer: bool) -> float | int | None:
+    """Multiply a threshold by `factor`, preserving None and integer kind."""
+    if value is None:
+        return None
+    scaled = value * factor
+    if integer:
+        return max(1, int(round(scaled)))
+    return scaled
+
+
+def apply_editorial_overlay(profile: BookProfile, prefs: dict[str, Any]) -> BookProfile:
+    """Return a new BookProfile with the galley UI sidecar applied.
+
+    The sidecar carries three fields today (mirrors `EditorialPrefs` in
+    apps/web/src/api/editorialPrefs.ts):
+
+      - activeVoice: str   — when non-empty, replaces profile.voice.
+      - prosePreset: str   — 'gentle' | 'standard' | 'strict'. Scales
+                              every detector's warning/blocker thresholds
+                              by the matching factor in PROSE_PRESET_FACTORS.
+                              Unknown values are treated as 'standard'.
+      - voicePassMode: str — UI/agent concern; preserved in profile.extra
+                              under '_voice_pass_mode' for the voice-pass
+                              agent to pick up. Ignored by detectors.
+
+    Returns a fresh BookProfile instance — the input is not mutated. Empty
+    or absent fields fall back to the underlying profile.
+    """
+    active_voice = prefs.get("activeVoice")
+    preset = prefs.get("prosePreset")
+    voice_pass_mode = prefs.get("voicePassMode")
+
+    factor = PROSE_PRESET_FACTORS.get(preset, 1.0) if isinstance(preset, str) else 1.0
+
+    if factor == 1.0:
+        scaled_detectors = profile.detectors
+    else:
+        scaled_detectors = {}
+        for name, cfg in profile.detectors.items():
+            scaled_detectors[name] = DetectorConfig(
+                enabled=cfg.enabled,
+                warning_per_1k=_scale_threshold(cfg.warning_per_1k, factor, integer=False),
+                blocker_per_1k=_scale_threshold(cfg.blocker_per_1k, factor, integer=False),
+                warning_raw_count=_scale_threshold(cfg.warning_raw_count, factor, integer=True),
+                blocker_raw_count=_scale_threshold(cfg.blocker_raw_count, factor, integer=True),
+                min_confidence=cfg.min_confidence,
+                stopwords=list(cfg.stopwords),
+                motifs=dict(cfg.motifs),
+                retired_motifs=list(cfg.retired_motifs),
+                filter_words=list(cfg.filter_words),
+                self_referential_frames=list(cfg.self_referential_frames),
+                routing=cfg.routing,
+                held_lines_path=cfg.held_lines_path,
+                extra=dict(cfg.extra),
+            )
+
+    next_voice = profile.voice
+    if isinstance(active_voice, str) and active_voice.strip():
+        next_voice = active_voice.strip()
+
+    next_extra = dict(profile.extra)
+    if isinstance(voice_pass_mode, str) and voice_pass_mode:
+        next_extra["_voice_pass_mode"] = voice_pass_mode
+    if isinstance(preset, str) and preset:
+        next_extra["_prose_preset"] = preset
+
+    return BookProfile(
+        book_id=profile.book_id,
+        voice=next_voice,
+        genre=profile.genre,
+        detectors=scaled_detectors,
+        compute=profile.compute,
+        held_lines_dir=profile.held_lines_dir,
+        extra=next_extra,
+    )
 
 
 # ─── Verdict rollup ────────────────────────────────────────────────────────

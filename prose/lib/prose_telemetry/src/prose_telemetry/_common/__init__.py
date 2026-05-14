@@ -14,11 +14,13 @@ prose_telemetry.
 """
 
 from prose_telemetry._common.types import (
+    PROSE_PRESET_FACTORS,
     BookProfile,
     ComputeConfig,
     DetectorConfig,
     Finding,
     Verdict,
+    apply_editorial_overlay,
 )
 from prose_telemetry._common.registry import (
     DetectorEntry,
@@ -30,12 +32,14 @@ from prose_telemetry._common.registry import (
 )
 
 __all__ = [
+    "PROSE_PRESET_FACTORS",
     "BookProfile",
     "ComputeConfig",
     "DetectorConfig",
     "DetectorEntry",
     "Finding",
     "Verdict",
+    "apply_editorial_overlay",
     "discover",
     "get",
     "register",

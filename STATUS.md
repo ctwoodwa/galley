@@ -25,7 +25,7 @@ medium with the same internal pattern:
 
 | Family | Status |
 |---|---|
-| `prose/` | Phase 0–6 complete: 38 stdlib + 4 spaCy + 4 anti-AI lexical + 9 mid-complexity device + 6 anti-AI structural + 3 sonics + 3 extra detectors. 165 tests green. See `prose/ROADMAP.md`. |
+| `prose/` | Phase 0–6 complete: 38 stdlib + 4 spaCy + 4 anti-AI lexical + 9 mid-complexity device + 6 anti-AI structural + 3 sonics + 3 extra detectors. 181 tests green (incl. 16 for editorial-overlay merge). See `prose/ROADMAP.md`. |
 | `speech/` | Reserved. TTS/STT-driven editing. |
 | `comics/` | Reserved. |
 | `video/` | Reserved. |
@@ -147,11 +147,11 @@ Triaged in priority order, none blocking:
 1. **Finish remaining placeholder sections** — Account, Notifications,
    Integrations, Advanced. (Danger zone shipped using ConfirmDialog as
    forcing function; EntryCard/ConfirmDialog primitives shipped.)
-2. **Pipeline read-side for the editorial sidecar** — galley/prose
-   should read `<bookRoot>/.galley/editorial.json` as an overlay on
-   top of `book.editorial.yaml` (preset → detector-threshold mapping,
-   activeVoice → voice id). Today the write-through lands the file;
-   nothing reads it yet.
+2. **Wire `BookProfile.from_book_root` into the active CLI/runner** —
+   the overlay merge logic ships but the prose CLI doesn't yet call
+   `from_book_root` (it loads detector configs ad-hoc). When the CLI
+   migrates to the unified loader, every `prose measure` invocation
+   will honor the sidecar.
 3. **Hydrate-on-mount for editorialPrefs** — when the user has
    multiple machines editing the same book over Tailscale, last-
    writer-wins reconciliation matters. Today local-storage wins on
