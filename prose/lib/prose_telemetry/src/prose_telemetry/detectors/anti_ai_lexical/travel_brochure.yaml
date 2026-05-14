@@ -1,0 +1,29 @@
+name: travel_brochure
+family: anti_ai
+confidence: 0.8
+severity: warning
+description: |
+  Promotional / travel-brochure language used to describe technical or
+  factual content. Vocabulary lifted from marketing copy: "seamless,"
+  "intuitive," "vibrant," "in the heart of."
+why: |
+  Replace with specific properties. "The framework has 240+ third-party
+  plugins" beats "the framework boasts a vibrant ecosystem of plugins
+  and offers a seamless, intuitive developer experience."
+markers:
+  - "\\bboasts?\\s+(?:a|an|its|the)\\b"
+  - "\\bvibrant\\s+(?:ecosystem|community|landscape|culture)\\b"
+  - "\\b(?:rich|deep)\\s+tapestry\\b"
+  - "\\bin\\s+the\\s+heart\\s+of\\b"
+  - "\\bnestled\\s+(?:in|between|among)\\b"
+  - "\\bbreathtaking\\s+(?:view|vista|scope)\\b"
+  - "\\bmust[- ]visit\\b"
+  - "\\brenowned\\s+for\\b"
+  - "\\bgroundbreaking\\b"
+  - "\\bseamless\\s+(?:experience|integration|workflow|developer)\\b"
+  - "\\bintuitive\\s+(?:interface|experience|design|developer)\\b"
+  - "\\bpowerful\\s+(?:tool|platform|solution|feature)\\b"
+examples_before:
+  - "The framework boasts a vibrant ecosystem of plugins and offers a seamless, intuitive developer experience."
+examples_after:
+  - "The framework has 240+ third-party plugins. Setup is `npm install` plus one config file."

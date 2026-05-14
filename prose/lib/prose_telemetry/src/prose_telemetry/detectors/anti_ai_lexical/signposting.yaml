@@ -1,0 +1,28 @@
+name: signposting
+family: anti_ai
+confidence: 0.95
+severity: warning
+description: |
+  Signposting and announcements — sentences that announce what the
+  writing is about to do ("Let's dive into," "Here's what you need to
+  know") instead of doing it.
+why: |
+  The chatty signpost that AI models reach for to soften transitions.
+  In direct register, the new section's first sentence IS the
+  transition.
+markers:
+  - "\\blet'?s?\\s+dive\\s+(?:in|into)\\b"
+  - "\\blet'?s?\\s+explore\\b"
+  - "\\blet'?s?\\s+break\\s+(?:this|it)\\s+down\\b"
+  - "\\blet'?s?\\s+unpack\\b"
+  - "\\blet'?s?\\s+walk\\s+through\\b"
+  - "\\bhere'?s?\\s+what\\s+you\\s+need\\s+to\\s+know\\b"
+  - "\\bhere'?s?\\s+the\\s+thing\\b"
+  - "\\bnow\\s+let'?s?\\s+(?:look\\s+at|examine|consider|turn\\s+to)\\b"
+  - "\\bwithout\\s+further\\s+ado\\b"
+  - "\\bbuckle\\s+up,?\\s+(?:because|as)\\b"
+  - "\\bIn\\s+this\\s+(?:chapter|section|article|post),?\\s+we\\s+will\\b"
+examples_before:
+  - "Let's dive into how the sync daemon handles peer discovery. Here's what you need to know."
+examples_after:
+  - "Peer discovery in the sync daemon runs in two modes: bootstrap (find any peer to start) and steady-state (maintain the working set of known peers)."

@@ -1,0 +1,36 @@
+name: ai_vocab_cluster
+family: anti_ai
+confidence: 0.6
+severity: info
+description: |
+  AI vocabulary cluster. Words that appear at much higher frequency in
+  post-2023 text than in pre-2023 books and journals. Not wrong
+  individually, but appearing together at statistical regularity. Each
+  hit is a *candidate* for review, not an automatic violation —
+  confidence is intentionally low so the verdict layer treats this as
+  informational, not warning-worthy on its own.
+why: |
+  `crucial` and `key` are often correct in technical writing ("the key
+  invariant is"). Flag only when used as soft emphasis. `landscape` is
+  fine in literal compounds ("data-residency landscape") but a tell as
+  abstract puffery. `delve`, `showcase`, and `tapestry` are almost
+  always tells; replace with `examine`, `demonstrate`, `set of`.
+markers:
+  - "\\bdelve\\s+into\\b"
+  - "\\bshowcas(?:e|es|ing|ed)\\b"
+  - "\\b(?:rich|complex|intricate)\\s+tapestry\\b"
+  - "\\binterplay\\s+(?:of|between)\\b"
+  - "\\bintricacies\\s+of\\b"
+  - "\\bunderscor(?:e|es|ing|ed)\\s+(?:the|this|its|that)\\b"
+  - "\\b(?:foster|fosters|fostering)\\s+(?:a|an|the|its)\\s+(?:vibrant|enduring|valuable|deeper)\\b"
+  - "\\bgarner(?:s|ed|ing)?\\b"
+  - "\\benduring\\s+(?:legacy|appeal|relevance|importance|architecture)\\b"
+  - "\\bvibrant\\s+(?:ecosystem|community)\\b"
+  - "\\bvaluable\\s+(?:insight|contribution|perspective|resource)\\b"
+  - "\\bpivotal\\s+(?:moment|role|moment|shift)\\b"
+  - "^Additionally,"
+  - "\\.\\s+Additionally,\\s+"
+examples_before:
+  - "Additionally, this chapter delves into the intricate interplay between the sync daemon and the relay, showcasing how their key roles foster a vibrant, enduring architecture."
+examples_after:
+  - "The sync daemon and relay communicate over a wire protocol defined in Appendix A. This section traces a single message from emit to commit on a remote peer."

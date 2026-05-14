@@ -12,6 +12,9 @@ license-files = ["LICENSE"]
 
 dependencies = [
     "spacy >=3.7,<4",
+    "pyyaml >=6",
+    "textstat >=0.7",
+    "markdown-it-py >=3",
 ]
 
 [project.scripts]

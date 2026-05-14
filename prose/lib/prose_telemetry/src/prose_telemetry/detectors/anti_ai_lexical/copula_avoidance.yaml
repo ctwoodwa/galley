@@ -1,0 +1,27 @@
+name: copula_avoidance
+family: anti_ai
+confidence: 0.85
+severity: warning
+description: |
+  Copula avoidance — replacing simple is / are / has with elaborate
+  verb constructions that add no information. "Serves as," "stands as,"
+  "represents a," "embodies," "constitutes a." One of the highest-yield
+  single-rule fixes for AI-flavored prose.
+why: |
+  Specification voice is built on direct copulas. "The kernel IS the
+  trust boundary" beats "the kernel serves as the trust boundary."
+  Some verbs are legitimate when carrying their literal meaning
+  ("the relay serves authenticated traffic only" = `serve` means
+  handle); the markers below target the puffy use.
+markers:
+  - "\\bserves?\\s+as\\s+(?:a|an|the)\\b"
+  - "\\bstands?\\s+as\\s+(?:a|an|the)\\b"
+  - "\\bmarks?\\s+(?:a|an|the)\\s+(?:pivotal|crucial|significant|important|key)\\b"
+  - "\\brepresents?\\s+(?:a|an|the)\\b"
+  - "\\bembodies?\\s+(?:a|an|the)\\b"
+  - "\\bconstitutes?\\s+(?:a|an|the)\\b"
+  - "\\bboasts?\\s+(?:a|an|the)\\b"
+examples_before:
+  - "The Anchor accelerator serves as the reference implementation for Zone A. It boasts an embedded SQLite store, features a CRDT engine adapter layer, and stands as a testbed for the architecture."
+examples_after:
+  - "The Anchor accelerator is the reference implementation for Zone A. It uses embedded SQLite, has a CRDT engine adapter layer, and is the testbed for the architecture."

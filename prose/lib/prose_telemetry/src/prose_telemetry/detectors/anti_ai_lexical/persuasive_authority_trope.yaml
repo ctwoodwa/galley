@@ -1,0 +1,27 @@
+name: persuasive_authority_trope
+family: anti_ai
+confidence: 0.85
+severity: warning
+description: |
+  Persuasive authority tropes — phrases that signal the writer is about
+  to deliver a deep insight, when the sentence that follows just
+  restates an ordinary point with extra ceremony. "The real question
+  is," "at its core," "fundamentally."
+why: |
+  Style guides for this book lead with the punchline. These tropes are
+  the opposite of leading with the punchline — they are the writer
+  clearing throat before saying the punchline.
+markers:
+  - "\\bthe\\s+real\\s+question\\s+is\\b"
+  - "\\bat\\s+its\\s+core,?\\b"
+  - "\\bin\\s+reality,?\\b"
+  - "\\bwhat\\s+really\\s+matters\\s+is\\b"
+  - "\\bfundamentally,?\\s+"
+  - "\\bthe\\s+deeper\\s+issue\\s+is\\b"
+  - "\\bthe\\s+heart\\s+of\\s+the\\s+matter\\b"
+  - "\\bwhen\\s+you\\s+get\\s+down\\s+to\\s+it\\b"
+  - "\\bat\\s+the\\s+end\\s+of\\s+the\\s+day,?\\s+"
+examples_before:
+  - "The real question is whether teams will adopt local-first architectures. At its core, what really matters is whether the developer experience can match the SaaS baseline."
+examples_after:
+  - "Adoption depends on developer experience matching the SaaS baseline. Until tooling closes that gap, local-first remains a deliberate choice rather than a default."

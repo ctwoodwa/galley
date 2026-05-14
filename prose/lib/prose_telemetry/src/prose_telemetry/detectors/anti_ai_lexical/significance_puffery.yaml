@@ -1,0 +1,31 @@
+name: significance_puffery
+family: anti_ai
+confidence: 0.9
+severity: warning
+description: |
+  Significance / legacy / broader-trend puffery. Sentences that puff up
+  a fact's importance by gesturing at "broader" trends, "evolving
+  landscapes," or "pivotal moments" — language that adds emotional
+  weight without adding information.
+why: |
+  Puffery dilutes specific claims. "Marking a pivotal moment in the
+  evolution of distributed storage" tells the reader less than "this was
+  the first system to ship CRDTs at consumer scale."
+markers:
+  - "\\bstands?\\s+as\\s+a\\s+testament\\b"
+  - "\\bserves?\\s+as\\s+a\\s+reminder\\b"
+  - "\\bmarking\\s+a\\s+pivotal\\s+moment\\b"
+  - "\\bpivotal\\s+moment\\s+in\\b"
+  - "\\bthe\\s+evolving\\s+landscape\\b"
+  - "\\bcontributing\\s+to\\s+the\\s+broader\\b"
+  - "\\bsetting\\s+the\\s+stage\\s+for\\b"
+  - "\\ban\\s+indelible\\s+mark\\b"
+  - "\\bdeeply\\s+rooted\\s+in\\b"
+  - "\\ban?\\s+enduring\\s+legacy\\b"
+  - "\\bunderscores?\\s+its\\s+(importance|significance)\\b"
+  - "\\breflects?\\s+a\\s+broader\\b"
+  - "\\bkey\\s+turning\\s+point\\b"
+examples_before:
+  - "The 2019 paper marked a pivotal moment in the evolution of distributed software."
+examples_after:
+  - "The 2019 paper named seven properties for local-first software."

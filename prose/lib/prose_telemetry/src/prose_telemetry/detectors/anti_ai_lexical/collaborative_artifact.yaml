@@ -1,0 +1,28 @@
+name: collaborative_artifact
+family: anti_ai
+confidence: 1.0
+severity: blocker
+description: |
+  Collaborative communication artifacts — phrases left over from
+  chatbot conversation pasted as content. "I hope this helps,"
+  "Certainly!," "You're absolutely right." Should be zero in published
+  prose; this is the canonical zero-tolerance check.
+why: |
+  No legitimate use in published technical or literary prose. Pure
+  copy-paste residue from an AI conversation. Always cut.
+markers:
+  - "\\bI\\s+hope\\s+this\\s+helps\\b"
+  - "\\bCertainly!\\B"
+  - "\\bOf\\s+course!\\B"
+  - "\\bYou(?:'re|\\s+are)\\s+absolutely\\s+right\\b"
+  - "\\bWould\\s+you\\s+like\\s+me\\s+to\\b"
+  - "\\bLet\\s+me\\s+know\\s+if\\s+(?:you|there)\\b"
+  - "\\bHere\\s+is\\s+an?\\s+(?:overview|summary)\\s+of\\b"
+  - "\\bHere'?s?\\s+a\\s+(?:summary|breakdown|comprehensive)\\b"
+  - "\\bI\\s+understand\\s+that\\s+you\\b"
+  - "\\bGreat\\s+question!\\B"
+  - "\\bExcellent\\s+question!\\B"
+examples_before:
+  - "I hope this helps! Let me know if you have any other questions."
+examples_after:
+  - "(delete entirely — these phrases never belong in published prose)"

@@ -4,11 +4,68 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
-### Phase 1 — Foundation (planned)
-- `lib/_common/` types: `Finding`, `DetectorConfig`, `BookProfile`, `Verdict`
-- Detector autodiscovery registry
-- Non-book test fixtures (`non_book_a`, `non_book_b`)
-- Vendor `prose_telemetry_handcount` into `lib/prose_telemetry/handcount/`
+### Phase 3 — proselint + sonics (planned)
+- proselint integration (BSD-3); dedup against own detectors
+- Alliteration / assonance / consonance via `pronouncing` + CMU dict
+
+### Phase 2 — High-yield additions (2026-05-14)
+
+**Aggregates** (`lib/prose_telemetry/src/prose_telemetry/aggregates/`):
+- `readability.py` — textstat wrappers: Flesch reading ease, Flesch-Kincaid
+  grade, ARI, Gunning Fog, Coleman-Liau, SMOG, Dale-Chall, syllable counts,
+  mean syllables per word. `attach_to_document_metrics()` for non-
+  destructive merge into existing document_metrics dicts.
+- `rhythm.py` — sentence-length CV (σ/μ of word counts per sentence),
+  em-dash density per paragraph (literal `—` and spaced ` -- ` forms),
+  dialogue/narration ratio (quote-marker heuristic matching the legacy
+  handcount `_is_dialogue`).
+
+**Markdown AST** (`markdown_ast.py`):
+- markdown-it-py wrapper. `parse_blocks(markdown)` returns typed `Block`s
+  (heading, paragraph, code, list_item, html, frontmatter, blockquote,
+  thematic_break). `extract_prose(markdown)` strips code fences and
+  frontmatter for detector consumption. Inline-header bullets (anti-AI
+  tells #16) flagged via AST inspection, handling both `**Key:**` (colon
+  inside bold) and `**Key**:` (colon after bold).
+
+**Anti-AI lexical detector pack**
+(`lib/prose_telemetry/src/prose_telemetry/detectors/anti_ai_lexical/`):
+- `LexicalLookupDetector` class — generic regex-driven detector loaded
+  from a yaml file. Single implementation; per-pattern data lives in yaml.
+- 10 yaml patterns (one detector each) auto-register on package import:
+  - `significance_puffery` — "stands as a testament", "pivotal moment", etc.
+  - `travel_brochure` — "boasts", "vibrant ecosystem", "seamless", "intuitive"
+  - `vague_attribution` — "experts argue", "industry observers", "it is widely believed"
+  - `ai_vocab_cluster` — "delve into", "showcase", "tapestry", "interplay" (low confidence)
+  - `copula_avoidance` — "serves as a", "stands as a", "represents a", "embodies"
+  - `collaborative_artifact` — "I hope this helps", "Certainly!", chatbot residue
+  - `knowledge_cutoff_disclaimer` — "as of my last training", "based on available information"
+  - `generic_positive_conclusion` — "future looks bright", "exciting developments ahead"
+  - `persuasive_authority_trope` — "the real question is", "at its core", "fundamentally"
+  - `signposting` — "let's dive in", "here's what you need to know"
+
+**Tests** (`tests/test_readability.py`, `test_rhythm.py`,
+`test_markdown_ast.py`, `test_anti_ai_lexical.py`):
+- 50 new tests covering aggregates, markdown AST, and the 10-detector pack.
+- Combined with Phase 1 canary: 65/65 tests pass.
+
+**Dependencies added** (`prose_telemetry/pyproject.toml`):
+- `pyyaml >=6` (for yaml-driven detectors)
+- `textstat >=0.7` (MIT; transitively pulls pyphen — tri-licensed
+  GPL/LGPL/MPL-1.1, treated under MPL-1.1, compatible with galley MIT)
+- `markdown-it-py >=3` (MIT)
+
+### Phase 1 — Foundation (2026-05-14)
+- `lib/_common/` types: `Finding`, `DetectorConfig`, `ComputeConfig`,
+  `BookProfile`, `Verdict`. All plain dataclasses; yaml round-trip via
+  `BookProfile.from_yaml/from_dict`.
+- Detector autodiscovery registry: `@register` decorator, `get(name)`,
+  `discover(family=, tier=)`.
+- `books/_schema.yaml` JSON Schema + `books/the-inverted-stack.yaml`
+  first-customer profile stub + `books/README.md`.
+- `tests/conftest.py` shared fixtures + `tests/fixtures/non_book_a/` &
+  `non_book_b/` with their own book.editorial.yaml profiles +
+  `tests/test_canary.py` (15 tests, all pass).
 
 ## [0.1.0] — 2026-05-14
 

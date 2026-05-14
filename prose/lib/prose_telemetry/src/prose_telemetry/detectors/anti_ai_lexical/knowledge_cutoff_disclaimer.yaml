@@ -1,0 +1,24 @@
+name: knowledge_cutoff_disclaimer
+family: anti_ai
+confidence: 0.95
+severity: warning
+description: |
+  Knowledge-cutoff disclaimers — hedges that gesture at "available
+  information" instead of naming what's unknown directly. Reads as
+  model-self-disclosure rather than authored uncertainty.
+why: |
+  When a fact is unknown or unstable, say so directly — name the
+  uncertainty and what would resolve it. Do not hedge with "available
+  information" language that reads as AI model self-disclosure.
+markers:
+  - "\\bas\\s+of\\s+my\\s+(?:last\\s+)?(?:training|knowledge\\s+)?(?:cutoff|update|data)\\b"
+  - "\\bup\\s+to\\s+my\\s+last\\s+(?:training\\s+)?update\\b"
+  - "\\bwhile\\s+specific\\s+details\\s+are\\s+limited\\b"
+  - "\\bbased\\s+on\\s+available\\s+information\\b"
+  - "\\bwhile\\s+comprehensive\\s+data\\s+is\\s+not\\s+available\\b"
+  - "\\bbeyond\\s+my\\s+(?:knowledge|training)\\s+cutoff\\b"
+  - "\\bI\\s+do\\s+not\\s+have\\s+(?:access\\s+to|real[- ]time)\\b"
+examples_before:
+  - "While specific details about Sunfish's production deployments are limited, it appears to be in active use by several teams as of 2026."
+examples_after:
+  - "Sunfish is open source (github.com/ctwoodwa/Sunfish) and pre-1.0 as of 2026; production deployments are not publicly tracked."

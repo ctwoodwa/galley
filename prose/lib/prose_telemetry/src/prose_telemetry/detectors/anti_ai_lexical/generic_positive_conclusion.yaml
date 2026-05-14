@@ -1,0 +1,25 @@
+name: generic_positive_conclusion
+family: anti_ai
+confidence: 0.85
+severity: warning
+description: |
+  Generic positive conclusions — closing paragraphs that offer vague
+  optimism ("looks bright," "exciting times ahead") without naming what
+  specifically improves or what action follows.
+why: |
+  Closings must close on a specific claim or action — what the reader
+  does next, what shipped, what is now possible. Generic optimism reads
+  as filler and weakens the prose's overall posture.
+markers:
+  - "\\bfuture\\s+(?:of\\s+\\w+\\s+)?looks\\s+bright\\b"
+  - "\\bexciting\\s+(?:times|developments|future|prospects)\\s+(?:ahead|on\\s+the\\s+horizon|await)\\b"
+  - "\\bmajor\\s+step\\s+in\\s+the\\s+right\\s+direction\\b"
+  - "\\bcontinues?\\s+to\\s+(?:grow|evolve|expand|flourish)\\b"
+  - "\\bbright\\s+future\\s+(?:ahead|for|awaits)\\b"
+  - "\\bdespite\\s+(?:these\\s+)?challenges,?\\s+the\\s+future\\b"
+  - "\\bthe\\s+possibilities\\s+are\\s+endless\\b"
+  - "\\bonly\\s+the\\s+beginning\\b"
+examples_before:
+  - "The future of local-first software looks bright. Exciting developments are on the horizon as the community continues to grow."
+examples_after:
+  - "The next eighteen months will tell whether local-first reaches the inflection point of CRDT engines becoming a commodity dependency. Three projects to watch: Sunfish, Loro, and Yjs's 2.0 line."

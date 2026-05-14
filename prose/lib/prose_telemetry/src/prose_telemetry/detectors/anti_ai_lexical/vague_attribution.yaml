@@ -1,0 +1,26 @@
+name: vague_attribution
+family: anti_ai
+confidence: 0.95
+severity: warning
+description: |
+  Opinions attributed to "industry observers," "experts," "some
+  critics," or "several sources" — authority phrases that name no actual
+  source. Either name the source (with a citation) or state the claim
+  without attribution.
+why: |
+  In specification voice (Part III) and Council chapters (Part II),
+  there is no role for unnamed expert opinion. Replace with a named
+  source + citation, or with the claim itself.
+markers:
+  - "\\bindustry\\s+(?:reports?|observers?|analysts?)\\s+(?:say|note|argue|suggest|believe|find|show)"
+  - "\\bexperts?\\s+(?:argue|believe|agree|note|say|suggest)\\b"
+  - "\\bsome\\s+critics?\\s+(?:argue|believe|note|say|suggest|claim)\\b"
+  - "\\bseveral\\s+sources\\b"
+  - "\\bmany\\s+commentators?\\b"
+  - "\\bit\\s+is\\s+widely\\s+believed\\b"
+  - "\\bit\\s+has\\s+been\\s+(?:noted|argued|suggested|observed)\\s+that\\b"
+  - "\\bobservers\\s+have\\s+(?:noted|argued|suggested|pointed\\s+out)\\b"
+examples_before:
+  - "Industry observers have noted that local-first architectures struggle with multi-tenant scenarios."
+examples_after:
+  - "Multi-tenant local-first deployments require a coordinator for cross-tenant operations. Chapter 18 covers the Bridge accelerator pattern that solves this."
