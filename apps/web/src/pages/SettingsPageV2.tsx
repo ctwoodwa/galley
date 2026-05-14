@@ -9,6 +9,7 @@ import {
   SettingsSection,
   type SettingsScope,
 } from '@/components/settings'
+import { useEditorialHydration } from '@/api/editorialPrefs'
 
 /**
  * Reference page hosting the editorial-letterpress settings shell.
@@ -16,6 +17,8 @@ import {
  * implementation. Reachable at /settings.
  */
 export function SettingsPageV2() {
+  useEditorialHydration()
+
   const sections: SettingsSectionDef[] = [
     {
       id: 'account',

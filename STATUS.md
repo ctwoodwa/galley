@@ -52,7 +52,7 @@ module / environment.
 | I | Account | user | Placeholder | — |
 | II | Books | workspace | **Shipped (registry shape)** | `useBookRegistry` → localStorage |
 | III | Services | environment | **Shipped (form shape, reference)** | `useApiConfig.services` → localStorage |
-| IV | Editorial | workspace | **Shipped (form + radio shape)** | `useEditorialPrefs` → localStorage + debounced write-through to `<bookRoot>/.galley/editorial.json` via book-server |
+| IV | Editorial | workspace | **Shipped (form + radio shape)** | `useEditorialPrefs` → localStorage + debounced write-through to `<bookRoot>/.galley/editorial.json`; v3 hydrate-on-mount + reconcile with server-stamped LWW |
 | V | Notifications | user | Placeholder | — |
 | VI | Integrations | environment | Placeholder | — |
 | VII | Advanced | environment | Placeholder | — |
@@ -85,8 +85,8 @@ slot-URL → shared-default → null. See `packages/api-client/src/services.ts`.
 middleware with explicit version bumps and migrate handlers:
 - `galley.api-config` v3 (added `services` map from legacy
   `baseUrl/apiKey/ttsSource/kokoroLocalUrl`).
-- `galley.editorial-prefs` v2 (dropped `activeBookId` after move to
-  `bookRegistry`).
+- `galley.editorial-prefs` v3 (v2 dropped `activeBookId`; v3 added
+  per-book sync `meta` for hydrate-and-reconcile).
 - `galley.book-registry` v1 (new).
 Each migrate handler is in the same file as the store; one localStorage
 key per store; bump version when the in-memory shape changes.
@@ -152,10 +152,11 @@ Triaged in priority order, none blocking:
    `from_book_root` (it loads detector configs ad-hoc). When the CLI
    migrates to the unified loader, every `prose measure` invocation
    will honor the sidecar.
-3. **Hydrate-on-mount for editorialPrefs** — when the user has
-   multiple machines editing the same book over Tailscale, last-
-   writer-wins reconciliation matters. Today local-storage wins on
-   every load.
+3. **Source-of-truth for the editorial sidecar** — is
+   `.galley/editorial.json` committed (git-converged, galley becomes
+   a cache/import path) or gitignored (galley owns sync via kernel-
+   sync)? Today the v3 LWW reconciler treats galley as the sync
+   transport; the answer reshapes that.
 4. **Worker installation docs** at `docs/services/{tts-fast,tts-quality,stt,image,music}.md`
    — completes the services story.
 5. **Replace legacy SettingsDrawer** in the inference studio with

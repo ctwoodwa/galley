@@ -985,10 +985,16 @@ app.get('/api/books/:bookId/profile/editorial', (req, res) => {
   const data = getBook(req.params.bookId)
   if (!data) return res.status(404).json({ error: 'Book not found' })
   const filePath = editorialProfilePath(data.book.bookRoot)
-  if (!fs.existsSync(filePath)) return res.json({ prefs: null })
+  if (!fs.existsSync(filePath)) return res.json({ prefs: null, updated_at: null })
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
-    res.json({ prefs: parsed.prefs ?? null })
+    // Server-stamped updated_at is the LWW basis for the client. Fall back
+    // to the file's mtime if a hand-edited sidecar lacks the field.
+    let updatedAt = parsed.updated_at ?? null
+    if (!updatedAt) {
+      try { updatedAt = fs.statSync(filePath).mtime.toISOString() } catch { updatedAt = null }
+    }
+    res.json({ prefs: parsed.prefs ?? null, updated_at: updatedAt })
   } catch (e) {
     res.status(500).json({ error: `Failed to read editorial profile: ${e.message}` })
   }
