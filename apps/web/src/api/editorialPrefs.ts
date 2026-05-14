@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useBookRegistry } from './bookRegistry'
 
 /**
  * Per-book editorial preferences — workspace-scoped settings that today
@@ -7,9 +8,9 @@ import { persist } from 'zustand/middleware'
  * through to `book.editorial.yaml` in the book repo via a book-server
  * write-through endpoint.
  *
- * State shape lives flat (one record per book id). The active book is
- * stored separately under `activeBookId`; reading "the current book's
- * prefs" is `prefs[activeBookId] ?? defaultPrefs()`.
+ * State shape: a flat map `prefs[bookId] -> EditorialPrefs`. Which book
+ * is "currently active" lives in `useBookRegistry`, not here — this
+ * store is purely the per-book preference data.
  *
  * Migration path to book-server-backed storage:
  *   1. Today: localStorage only. Galley reads from this store; pipelines
@@ -20,6 +21,9 @@ import { persist } from 'zustand/middleware'
  *      a debounce, plus a hydrate-from-server on mount.
  *   3. Eventually: kernel-sync flows the editorial profile yaml across
  *      paired devices as part of the workspace sync stream.
+ *
+ * Persist version 2: drops the now-redundant `activeBookId` (moved to
+ * useBookRegistry). The migrate handler strips it from older state.
  */
 
 export type ProsePreset = 'gentle' | 'standard' | 'strict'
@@ -47,11 +51,7 @@ export function defaultPrefs(): EditorialPrefs {
 }
 
 interface EditorialPrefsState {
-  /** ID of the book whose prefs are currently shown in Settings. */
-  activeBookId: string
-  /** Map of bookId → preferences. */
   prefs: Record<string, EditorialPrefs>
-  setActiveBookId: (id: string) => void
   setPref: <K extends keyof EditorialPrefs>(
     bookId: string,
     key: K,
@@ -60,20 +60,12 @@ interface EditorialPrefsState {
   resetPrefs: (bookId: string) => void
 }
 
-const DEFAULT_ACTIVE_BOOK_ID = 'the-inverted-stack'
+const DEFAULT_BOOK_ID = 'the-inverted-stack'
 
 export const useEditorialPrefs = create<EditorialPrefsState>()(
   persist(
     (set, get) => ({
-      activeBookId: DEFAULT_ACTIVE_BOOK_ID,
-      prefs: { [DEFAULT_ACTIVE_BOOK_ID]: defaultPrefs() },
-      setActiveBookId: (id) => {
-        const { prefs } = get()
-        set({
-          activeBookId: id,
-          prefs: prefs[id] ? prefs : { ...prefs, [id]: defaultPrefs() },
-        })
-      },
+      prefs: { [DEFAULT_BOOK_ID]: defaultPrefs() },
       setPref: (bookId, key, value) => {
         const { prefs } = get()
         const current = prefs[bookId] ?? defaultPrefs()
@@ -91,16 +83,29 @@ export const useEditorialPrefs = create<EditorialPrefsState>()(
     }),
     {
       name: 'galley.editorial-prefs',
-      version: 1,
+      version: 2,
+      migrate: (persistedState: unknown, version: number) => {
+        const state = (persistedState ?? {}) as {
+          prefs?: Record<string, EditorialPrefs>
+          activeBookId?: string
+        }
+        if (version < 2) {
+          // Drop legacy activeBookId; bookRegistry owns it now.
+          return { prefs: state.prefs ?? { [DEFAULT_BOOK_ID]: defaultPrefs() } }
+        }
+        return state as { prefs: Record<string, EditorialPrefs> }
+      },
     },
   ),
 )
 
 /**
- * Selector helper — returns the current active book's prefs, or
- * defaults when no entry exists yet. Falls through cleanly when a
- * fresh user has no persisted state.
+ * Selector helper — returns the current active book's prefs (active id
+ * sourced from useBookRegistry), or defaults when no entry exists yet.
  */
 export function useActiveBookPrefs(): EditorialPrefs {
-  return useEditorialPrefs((s) => s.prefs[s.activeBookId] ?? defaultPrefs())
+  const activeBookId = useBookRegistry((s) => s.activeBookId)
+  return useEditorialPrefs(
+    (s) => s.prefs[activeBookId] ?? defaultPrefs(),
+  )
 }

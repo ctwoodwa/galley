@@ -4,6 +4,7 @@ import {
   type SettingsSectionDef,
   ServicesSection,
   EditorialSection,
+  BooksSection,
   SettingsSection,
   type SettingsScope,
 } from '@/components/settings'
@@ -32,12 +33,7 @@ export function SettingsPageV2() {
       label: 'Books',
       icon: <BookOpen size={14} />,
       scope: 'workspace',
-      Component: PlaceholderSection(
-        'II',
-        'Books',
-        'Active book, per-book profile registry, held-lines pointer.',
-        'workspace',
-      ),
+      Component: BooksSection,
     },
     {
       id: 'services',

@@ -4,6 +4,7 @@ import {
   useActiveBookPrefs,
   useEditorialPrefs,
 } from '@/api/editorialPrefs'
+import { useBookRegistry } from '@/api/bookRegistry'
 import { SettingsSection } from '../SettingsSection'
 import { AdvancedDisclosure } from '../AdvancedDisclosure'
 import { RadioField } from '../fields/RadioField'
@@ -19,7 +20,7 @@ import { TextField } from '../fields/TextField'
  * module header.
  */
 export function EditorialSection() {
-  const activeBookId = useEditorialPrefs((s) => s.activeBookId)
+  const activeBookId = useBookRegistry((s) => s.activeBookId)
   const setPref = useEditorialPrefs((s) => s.setPref)
   const prefs = useActiveBookPrefs()
 

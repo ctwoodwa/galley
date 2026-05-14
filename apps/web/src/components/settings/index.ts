@@ -28,3 +28,4 @@ export {
 } from './fields/RadioField'
 export { ServicesSection } from './sections/ServicesSection'
 export { EditorialSection } from './sections/EditorialSection'
+export { BooksSection } from './sections/BooksSection'
