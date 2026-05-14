@@ -4,9 +4,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
-### Phase 5 — Mid-complexity literary devices (planned)
-- 9 spaCy-tier detectors: epistrophe, symploce, antimetabole, hypophora,
-  erotema, prolepsis, concession, definition-by-negation, distinctio.
+### Phase 6 — Structural anti-AI + extras (planned)
+- 6 markdown-AST detectors: `-ing` tail-phrases, rule-of-three density,
+  false ranges, inline-headers, title case, fragmented headers.
+- Plus 3 extras: simile, litotes, climax/auxesis.
+
+### Phase 5 — Mid-complexity literary devices (2026-05-14)
+
+Nine catalog devices, all regex + sentence-segmentation based (no spaCy
+required), registered under family='literary_device' tier='stdlib':
+
+| Catalog | Detector | What it catches |
+|---|---|---|
+| A2 | `epistrophe` | 3+ consecutive sentences ending with the same last N words |
+| A3 | `symploce` | 3+ consecutive sentences sharing both first N and last N words |
+| B11 | `antimetabole` | Same-word ABBA reversal within a sentence (distinct from chiasmus) |
+| D24 | `hypophora` | Question sentence followed by an author-answered declarative sentence |
+| D25 | `erotema` | Question in narration with no following answer |
+| E28 | `prolepsis` | Objection-trigger phrase ("you might think") + negating reply |
+| E29 | `concession` | Concessive opener (Yes/True/Granted/Indeed) + pivot marker |
+| E30 | `distinctio` | Explicit definition ("By 'X' we mean", "When I say 'X'") |
+| E32 | `definition_by_negation` | Run of 2+ negating sentences, optionally + affirming close |
+
+Shared infrastructure in `detectors/devices/_segment.py`:
+sentence-segmentation-with-spans + dialogue heuristic + word tokenizer
++ first/last-N-words helpers.
+
+Tests (`tests/test_devices.py`, 24 tests): positive + negative cases
+per detector + registration metadata + standard empty/disabled
+canaries.
+
+Combined suite: **139/139 pass**.
+
+Gap coverage:
+- Literary devices: 14/43 → **23/43** (added the catalog's A2, A3,
+  B11, D24, D25, E28, E29, E30, E32 entries).
 
 ### Phase 4 — Anna decoupling (2026-05-14)
 
