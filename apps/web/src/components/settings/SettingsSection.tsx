@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Loader2, Check, AlertCircle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { scopeDescription, scopeLabel, type SettingsScope } from './policy'
 
 export type SaveState = 'saved' | 'saving' | 'unsaved-error'
@@ -8,6 +8,8 @@ export interface SettingsSectionProps {
   title: string
   description?: string
   scope: SettingsScope
+  /** Roman numeral or label for the section's numbered placement. */
+  numeral?: string
   saveState?: SaveState
   /** Section-level error message rendered above the field list. */
   error?: string | null
@@ -15,52 +17,43 @@ export interface SettingsSectionProps {
 }
 
 /**
- * One task-based settings section. Owns its title, scope label,
- * save-state indicator, and section-level error display. Fields go
- * inside as children; this component does not assume a specific
- * layout for the field list (the section authors arrange their fields
- * however suits the content).
- *
- * Per `docs/settings/ia.md`: save is inline + per-section, no global
- * save button. The `saveState` prop reflects the state the section
- * itself manages; the indicator only shows "saving" briefly while a
- * write is in flight.
+ * Editorial section: a roman-numeral plate on the left, display-serif
+ * title, italic description, small-caps scope tag, and a pilcrow-marked
+ * save-state badge in the upper right. Inline save per section — no
+ * global save button.
  */
 export function SettingsSection({
   title,
   description,
   scope,
+  numeral,
   saveState = 'saved',
   error,
   children,
 }: SettingsSectionProps) {
   return (
-    <section className="max-w-3xl mx-auto px-8 py-6 space-y-6">
-      <header className="space-y-1">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold">{title}</h1>
-          <SaveStateBadge state={saveState} />
+    <section className="gs-section">
+      <header className="gs-section-header">
+        <div className="gs-section-numeral" aria-hidden="true">
+          {numeral ?? '§'}
         </div>
-        {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        ) : null}
-        <p
-          className="text-xs text-muted-foreground"
-          title={scopeDescription(scope)}
-        >
-          Scope: {scopeLabel(scope)}
-        </p>
+        <div className="gs-section-headings">
+          <h1 className="gs-section-title">{title}</h1>
+          {description ? (
+            <p className="gs-section-description">{description}</p>
+          ) : null}
+          <p className="gs-section-scope" title={scopeDescription(scope)}>
+            {scopeLabel(scope)}
+          </p>
+        </div>
+        <SaveStateBadge state={saveState} />
       </header>
       {error ? (
-        <div
-          role="alert"
-          className="flex items-start gap-2 rounded border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="w-4 h-4 mt-0.5" aria-hidden="true" />
-          <span>{error}</span>
+        <div role="alert" className="gs-section-error">
+          {error}
         </div>
       ) : null}
-      <div className="space-y-5">{children}</div>
+      <div className="gs-section-body">{children}</div>
     </section>
   )
 }
@@ -68,24 +61,24 @@ export function SettingsSection({
 function SaveStateBadge({ state }: { state: SaveState }) {
   if (state === 'saving') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-        <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
-        Saving…
+      <span className="gs-save-state saving">
+        <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+        saving
       </span>
     )
   }
   if (state === 'unsaved-error') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-destructive">
-        <AlertCircle className="w-3 h-3" aria-hidden="true" />
-        Validation error
+      <span className="gs-save-state error">
+        <span className="gs-save-state-pilcrow" aria-hidden="true">!</span>
+        validation error
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/70">
-      <Check className="w-3 h-3" aria-hidden="true" />
-      Saved
+    <span className="gs-save-state">
+      <span className="gs-save-state-pilcrow" aria-hidden="true">¶</span>
+      saved
     </span>
   )
 }

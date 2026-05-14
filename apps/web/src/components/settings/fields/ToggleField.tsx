@@ -9,10 +9,8 @@ export interface ToggleFieldProps {
 }
 
 /**
- * Toggle for immediate on/off state with no consequences beyond the
- * flag itself. Per `docs/settings/ia.md` the "consequence test":
- * if flipping changes behavior in multiple ways, use a `RadioField`
- * instead.
+ * Editorial toggle: a small-caps ON / OFF chip instead of a slider.
+ * Reads like a printer's mark; vermilion fill when active.
  */
 export function ToggleField({
   label,
@@ -23,9 +21,8 @@ export function ToggleField({
 }: ToggleFieldProps) {
   const id = useId()
   const helpId = useId()
-
   return (
-    <div className="flex items-start gap-3">
+    <div className="gs-toggle">
       <button
         type="button"
         role="switch"
@@ -34,25 +31,20 @@ export function ToggleField({
         aria-describedby={helperText ? helpId : undefined}
         disabled={disabled}
         onClick={() => onChange(!value)}
-        className={
-          'relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-1 focus:ring-ring ' +
-          (value ? 'bg-primary' : 'bg-muted')
-        }
+        className={'gs-toggle-control' + (value ? ' on' : '')}
       >
-        <span
-          aria-hidden="true"
-          className={
-            'inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ' +
-            (value ? 'translate-x-5' : 'translate-x-1')
-          }
-        />
+        {value ? 'on' : 'off'}
       </button>
-      <div className="flex-1 min-w-0">
-        <label id={`${id}-label`} className="block text-sm font-medium cursor-pointer" onClick={() => !disabled && onChange(!value)}>
+      <div className="gs-toggle-label-area">
+        <label
+          id={`${id}-label`}
+          className="gs-toggle-label"
+          onClick={() => !disabled && onChange(!value)}
+        >
           {label}
         </label>
         {helperText ? (
-          <p id={helpId} className="text-xs text-muted-foreground mt-0.5">
+          <p id={helpId} className="gs-field-helper" style={{ marginTop: '2px' }}>
             {helperText}
           </p>
         ) : null}

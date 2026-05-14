@@ -1,6 +1,7 @@
 import { useMemo, useState, type ComponentType, type ReactNode } from 'react'
 import { Search } from 'lucide-react'
-import { isVisible, type SettingsScope } from './policy'
+import { isVisible, scopeLabel, type SettingsScope } from './policy'
+import './settings.css'
 
 /**
  * One registered section. The shell renders the section's component
@@ -20,13 +21,15 @@ export interface SettingsShellProps {
   initialSectionId?: string
 }
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+
 /**
- * Settings chrome: left nav with search, detail pane on the right.
- * Filters sections by both `isVisible()` policy and the current
- * search query. The active section's component is mounted in the
- * detail pane; switching sections unmounts the previous one (no
- * client-side state survives — sections own their save state via
- * Zustand stores).
+ * Editorial Letterpress settings chrome. Left nav reads as a table of
+ * contents (roman numerals, italic marginalia for scope); detail pane
+ * is the active section. Search filters by section label/description.
+ *
+ * Themed via `settings.css` scoped to `.galley-settings` — does not
+ * affect the rest of the app.
  */
 export function SettingsShell({ sections, initialSectionId }: SettingsShellProps) {
   const visible = useMemo(
@@ -52,62 +55,62 @@ export function SettingsShell({ sections, initialSectionId }: SettingsShellProps
   const ActiveComponent = active?.Component
 
   return (
-    <div className="flex h-full w-full bg-surface text-foreground">
-      <nav
-        aria-label="Settings sections"
-        className="w-64 flex-shrink-0 border-r border-sidebar-border flex flex-col"
-      >
-        <div className="p-3 border-b border-sidebar-border">
-          <label className="relative block">
-            <Search
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              placeholder="Search settings"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm rounded bg-background border border-input focus:outline-none focus:ring-1 focus:ring-ring"
-              aria-label="Search settings"
-            />
-          </label>
-        </div>
-        <ul className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {filtered.map((s) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                onClick={() => setActiveId(s.id)}
-                aria-current={s.id === active?.id ? 'page' : undefined}
-                className={
-                  'w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 ' +
-                  (s.id === active?.id
-                    ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-muted text-foreground')
-                }
-              >
-                {s.icon ? <span aria-hidden="true">{s.icon}</span> : null}
-                <span>{s.label}</span>
-              </button>
-            </li>
-          ))}
-          {filtered.length === 0 ? (
-            <li className="px-2 py-2 text-xs text-muted-foreground">
-              No sections match "{query}".
-            </li>
-          ) : null}
-        </ul>
-      </nav>
-      <main className="flex-1 overflow-y-auto">
-        {ActiveComponent ? (
-          <ActiveComponent />
-        ) : (
-          <div className="p-8 text-muted-foreground">
-            No settings section available.
+    <div className="galley-settings">
+      <div className="gs-shell">
+        <nav aria-label="Settings sections" className="gs-nav">
+          <div className="gs-wordmark">
+            Galley
+            <span className="gs-wordmark-sub">an editorial production platform</span>
           </div>
-        )}
-      </main>
+          <div className="gs-search">
+            <label className="gs-search-wrap">
+              <Search className="gs-search-icon" size={13} aria-hidden="true" />
+              <input
+                type="search"
+                placeholder="Search settings…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="gs-search-input"
+                aria-label="Search settings"
+              />
+            </label>
+          </div>
+          <ul className="gs-nav-list">
+            {filtered.map((s, i) => {
+              const original = visible.findIndex((v) => v.id === s.id)
+              const numeral = ROMAN[original] ?? String(original + 1)
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(s.id)}
+                    aria-current={s.id === active?.id ? 'page' : undefined}
+                    className="gs-nav-item"
+                  >
+                    <span className="gs-nav-numeral">{numeral}</span>
+                    <span>
+                      <span className="gs-nav-label">{s.label}</span>
+                      <span className="gs-nav-scope">{scopeLabel(s.scope)}</span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+            {filtered.length === 0 ? (
+              <li className="gs-nav-empty">No sections match "{query}".</li>
+            ) : null}
+          </ul>
+        </nav>
+        <main className="gs-main">
+          {ActiveComponent ? (
+            <ActiveComponent />
+          ) : (
+            <div className="gs-section">
+              <p className="gs-placeholder">No settings section available.</p>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   )
 }

@@ -3,92 +3,132 @@ import {
   SettingsShell,
   type SettingsSectionDef,
   ServicesSection,
+  SettingsSection,
+  type SettingsScope,
 } from '@/components/settings'
 
 /**
- * Reference page that hosts the new SettingsShell with the registered
- * sections. Not yet wired into the router — exists as a demonstration
- * of the IA primitives. The legacy SettingsDrawer at
- * `pages/inference/SettingsDrawer.tsx` continues to serve the
- * production UI until a follow-up PR replaces it.
+ * Reference page hosting the editorial-letterpress settings shell.
+ * Most sections are placeholders today; Services is the reference
+ * implementation. Reachable at /settings.
  */
 export function SettingsPageV2() {
   const sections: SettingsSectionDef[] = [
     {
       id: 'account',
       label: 'Account',
-      icon: <UserCircle className="w-4 h-4" />,
+      icon: <UserCircle size={14} />,
       scope: 'user',
-      Component: PlaceholderSection('Account', 'Identity, theme, and bearer-token rotation.'),
+      Component: PlaceholderSection(
+        'I',
+        'Account',
+        'Identity, theme, bearer-token rotation, device keypair.',
+        'user',
+      ),
     },
     {
       id: 'books',
       label: 'Books',
-      icon: <BookOpen className="w-4 h-4" />,
+      icon: <BookOpen size={14} />,
       scope: 'workspace',
-      Component: PlaceholderSection('Books', 'Active book, per-book profile registry, held-lines pointer.'),
+      Component: PlaceholderSection(
+        'II',
+        'Books',
+        'Active book, per-book profile registry, held-lines pointer.',
+        'workspace',
+      ),
     },
     {
       id: 'services',
       label: 'Services',
-      icon: <Server className="w-4 h-4" />,
+      icon: <Server size={14} />,
       scope: 'environment',
       Component: ServicesSection,
     },
     {
       id: 'editorial',
       label: 'Editorial',
-      icon: <Sliders className="w-4 h-4" />,
+      icon: <Sliders size={14} />,
       scope: 'workspace',
-      Component: PlaceholderSection('Editorial', 'Prose-review preset, voice-pass mode, per-detector overrides.'),
+      Component: PlaceholderSection(
+        'IV',
+        'Editorial',
+        'Prose-review preset, voice-pass mode, per-detector overrides.',
+        'workspace',
+      ),
     },
     {
       id: 'notifications',
       label: 'Notifications',
-      icon: <Bell className="w-4 h-4" />,
+      icon: <Bell size={14} />,
       scope: 'user',
-      Component: PlaceholderSection('Notifications', 'Render-complete, voice-pass progress, sync-state alerts.'),
+      Component: PlaceholderSection(
+        'V',
+        'Notifications',
+        'Render-complete, voice-pass progress, sync-state alerts.',
+        'user',
+      ),
     },
     {
       id: 'integrations',
       label: 'Integrations',
-      icon: <Plug className="w-4 h-4" />,
+      icon: <Plug size={14} />,
       scope: 'environment',
-      Component: PlaceholderSection('Integrations', 'Git remote(s), Tailscale status, book repo paths.'),
+      Component: PlaceholderSection(
+        'VI',
+        'Integrations',
+        'Git remote(s), Tailscale status, book repo paths.',
+        'environment',
+      ),
     },
     {
       id: 'advanced',
       label: 'Advanced',
-      icon: <Cog className="w-4 h-4" />,
+      icon: <Cog size={14} />,
       scope: 'environment',
-      Component: PlaceholderSection('Advanced', 'Env-var overrides, schema migration, debug-log toggle.'),
+      Component: PlaceholderSection(
+        'VII',
+        'Advanced',
+        'Env-var overrides, schema migration, debug-log toggle.',
+        'environment',
+      ),
     },
     {
       id: 'danger',
       label: 'Danger zone',
-      icon: <AlertOctagon className="w-4 h-4 text-destructive" />,
+      icon: <AlertOctagon size={14} />,
       scope: 'environment',
-      Component: PlaceholderSection('Danger zone', 'Clear local state, force re-pair, delete book registry entry.'),
+      Component: PlaceholderSection(
+        'VIII',
+        'Danger zone',
+        'Clear local state, force re-pair, delete book registry entry.',
+        'environment',
+      ),
     },
   ]
 
-  return (
-    <div className="h-screen w-screen">
-      <SettingsShell sections={sections} initialSectionId="services" />
-    </div>
-  )
+  return <SettingsShell sections={sections} initialSectionId="services" />
 }
 
-function PlaceholderSection(title: string, description: string) {
+function PlaceholderSection(
+  numeral: string,
+  title: string,
+  description: string,
+  scope: SettingsScope,
+) {
   return function PlaceholderImpl() {
     return (
-      <div className="max-w-3xl mx-auto px-8 py-6">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{description}</p>
-        <p className="text-xs text-muted-foreground mt-6 italic">
-          Section deferred — see <code>docs/settings/ia.md</code> for the spec.
+      <SettingsSection
+        title={title}
+        numeral={numeral}
+        description={description}
+        scope={scope}
+      >
+        <p className="gs-placeholder">
+          Section deferred. See <code>docs/settings/ia.md</code> for the
+          shallow/advanced split this section will adopt when wired.
         </p>
-      </div>
+      </SettingsSection>
     )
   }
 }

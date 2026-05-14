@@ -15,11 +15,6 @@ export interface SelectFieldProps {
   disabled?: boolean
 }
 
-/**
- * Native `<select>` for 5+ options or extensible/dynamic option sets.
- * For 2–4 mutually exclusive modes with visible consequences, use
- * `RadioField` instead.
- */
 export function SelectField({
   label,
   value,
@@ -32,10 +27,9 @@ export function SelectField({
   const id = useId()
   const helpId = useId()
   const errorId = useId()
-
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium">
+    <div className="gs-field">
+      <label htmlFor={id} className="gs-field-label">
         {label}
       </label>
       <select
@@ -49,12 +43,7 @@ export function SelectField({
             .filter(Boolean)
             .join(' ') || undefined
         }
-        className={
-          'w-full px-2 py-1.5 text-sm rounded bg-background border focus:outline-none focus:ring-1 ' +
-          (error
-            ? 'border-destructive focus:ring-destructive'
-            : 'border-input focus:ring-ring')
-        }
+        className={'gs-select' + (error ? ' error' : '')}
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -63,11 +52,11 @@ export function SelectField({
         ))}
       </select>
       {error ? (
-        <p id={errorId} role="alert" className="text-xs text-destructive">
+        <p id={errorId} role="alert" className="gs-field-error">
           {error}
         </p>
       ) : helperText ? (
-        <p id={helpId} className="text-xs text-muted-foreground">
+        <p id={helpId} className="gs-field-helper">
           {helperText}
         </p>
       ) : null}

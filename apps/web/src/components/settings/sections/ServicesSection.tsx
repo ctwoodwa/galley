@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CAPABILITIES, type CapabilityId } from '@galley/api-client'
+import { CAPABILITIES, type CapabilityId, type ServiceConfig } from '@galley/api-client'
 import { useApiConfig } from '@/api/config'
 import { SettingsSection } from '../SettingsSection'
 import { AdvancedDisclosure } from '../AdvancedDisclosure'
@@ -9,70 +9,12 @@ import { SecretField } from '../fields/SecretField'
 import { SelectField } from '../fields/SelectField'
 import { ActionField } from '../fields/ActionField'
 
-/**
- * Reference settings section — exercises every primitive in the
- * settings/ folder. Each capability slot renders as a card with
- * shallow fields (provider label, baseUrl, enabled toggle, Test
- * button) and an inline advanced disclosure for the apiKey and
- * flavor. The shared-default fallback (the legacy single baseUrl +
- * apiKey) lives at the bottom in its own advanced group.
- */
-export function ServicesSection() {
-  const services = useApiConfig((s) => s.services)
-  const sharedBaseUrl = useApiConfig((s) => s.baseUrl)
-  const sharedApiKey = useApiConfig((s) => s.apiKey)
-  const setService = useApiConfig((s) => s.setService)
-  const setBaseUrl = useApiConfig((s) => s.setBaseUrl)
-  const setApiKey = useApiConfig((s) => s.setApiKey)
+const SLOT_NUMERALS = ['01', '02', '03', '04', '05', '06', '07', '08']
 
-  return (
-    <SettingsSection
-      title="Services"
-      description="Capability slots — galley apps route inference work to specific workers. Each slot's URL points at a TTS / STT / image / music service reachable from this machine; with Tailscale, that's typically a hostname on your tailnet."
-      scope="environment"
-    >
-      <div className="space-y-4">
-        {CAPABILITIES.map((capability) => (
-          <ServiceSlotCard
-            key={capability}
-            capability={capability}
-            slot={services[capability]}
-            onChange={(patch) => setService(capability, patch)}
-          />
-        ))}
-      </div>
-      <AdvancedDisclosure label="Show shared-default fallback" expandedLabel="Hide shared-default fallback">
-        <p className="text-xs text-muted-foreground">
-          Single-machine deployments can leave individual slot URLs empty and rely
-          on this shared default — every empty slot falls back to this base URL +
-          token. Editing here affects every slot that doesn't have its own URL set.
-        </p>
-        <TextField
-          label="Shared base URL"
-          value={sharedBaseUrl}
-          onChange={setBaseUrl}
-          inputType="url"
-          placeholder="http://localhost:8881"
-          helperText="Used when an individual slot's Base URL is empty."
-        />
-        <SecretField
-          label="Shared bearer token"
-          value={sharedApiKey}
-          onChange={setApiKey}
-          helperText="Sent as Authorization: Bearer header to the shared default URL."
-        />
-      </AdvancedDisclosure>
-    </SettingsSection>
-  )
-}
-
-interface ServiceSlotCardProps {
-  capability: CapabilityId
-  slot: import('@galley/api-client').ServiceConfig
-  onChange: (patch: Partial<import('@galley/api-client').ServiceConfig>) => void
-}
-
-const PROVIDER_OPTIONS_BY_CAPABILITY: Record<CapabilityId, readonly { value: string; label: string }[]> = {
+const PROVIDER_OPTIONS_BY_CAPABILITY: Record<
+  CapabilityId,
+  readonly { value: string; label: string }[]
+> = {
   'tts/fast': [
     { value: 'kokoro-fastapi', label: 'Kokoro-FastAPI' },
     { value: 'piper', label: 'Piper' },
@@ -107,7 +49,79 @@ const PROVIDER_OPTIONS_BY_CAPABILITY: Record<CapabilityId, readonly { value: str
   ],
 }
 
-function ServiceSlotCard({ capability, slot, onChange }: ServiceSlotCardProps) {
+/**
+ * Reference settings section. Each slot renders as a numbered entry
+ * (01, 02, …) with a monospaced slot id, italic provider name, and
+ * the shallow-then-advanced field stack.
+ */
+export function ServicesSection() {
+  const services = useApiConfig((s) => s.services)
+  const sharedBaseUrl = useApiConfig((s) => s.baseUrl)
+  const sharedApiKey = useApiConfig((s) => s.apiKey)
+  const setService = useApiConfig((s) => s.setService)
+  const setBaseUrl = useApiConfig((s) => s.setBaseUrl)
+  const setApiKey = useApiConfig((s) => s.setApiKey)
+
+  return (
+    <SettingsSection
+      title="Services"
+      numeral="III"
+      description="Capability slots route inference work to specific workers. Each slot's URL points at a TTS, STT, image, or music service reachable from this machine — typically a Tailscale hostname for a GPU host elsewhere on the tailnet."
+      scope="environment"
+    >
+      <div>
+        {CAPABILITIES.map((capability, i) => (
+          <ServiceSlotCard
+            key={capability}
+            numeral={SLOT_NUMERALS[i] ?? String(i + 1)}
+            capability={capability}
+            slot={services[capability]}
+            onChange={(patch) => setService(capability, patch)}
+          />
+        ))}
+      </div>
+
+      <div className="gs-ornament" aria-hidden="true">
+        <span className="gs-ornament-mark">❦</span>
+      </div>
+
+      <AdvancedDisclosure
+        label="show shared-default fallback"
+        expandedLabel="hide shared-default fallback"
+      >
+        <p className="gs-field-helper" style={{ marginTop: 0 }}>
+          Single-machine deployments may leave individual slot URLs
+          empty and rely on this shared default — every empty slot
+          falls back to the base URL and bearer token below. Editing
+          here affects every slot that doesn't have its own URL set.
+        </p>
+        <TextField
+          label="Shared base URL"
+          value={sharedBaseUrl}
+          onChange={setBaseUrl}
+          inputType="url"
+          placeholder="http://localhost:8881"
+          helperText="Used when an individual slot's Base URL is empty."
+        />
+        <SecretField
+          label="Shared bearer token"
+          value={sharedApiKey}
+          onChange={setApiKey}
+          helperText="Sent as Authorization: Bearer header to the shared default URL."
+        />
+      </AdvancedDisclosure>
+    </SettingsSection>
+  )
+}
+
+interface ServiceSlotCardProps {
+  numeral: string
+  capability: CapabilityId
+  slot: ServiceConfig
+  onChange: (patch: Partial<ServiceConfig>) => void
+}
+
+function ServiceSlotCard({ numeral, capability, slot, onChange }: ServiceSlotCardProps) {
   const [urlError, setUrlError] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testKind, setTestKind] = useState<'success' | 'error' | 'info'>('info')
@@ -136,78 +150,86 @@ function ServiceSlotCard({ capability, slot, onChange }: ServiceSlotCardProps) {
     try {
       const res = await fetch(`${slot.baseUrl.replace(/\/$/, '')}/health`, {
         method: 'GET',
-        headers: slot.apiKey ? { Authorization: `Bearer ${slot.apiKey}` } : undefined,
+        headers: slot.apiKey
+          ? { Authorization: `Bearer ${slot.apiKey}` }
+          : undefined,
       })
       if (res.ok) {
         setTestKind('success')
-        setTestResult(`Reachable — ${res.status}`)
+        setTestResult(`reachable · ${res.status}`)
       } else {
         setTestKind('error')
         setTestResult(`${res.status} ${res.statusText}`)
       }
     } catch (e) {
       setTestKind('error')
-      setTestResult(`Unreachable — ${(e as Error).message}`)
+      setTestResult(`unreachable — ${(e as Error).message}`)
     }
   }
 
   return (
-    <div className="rounded border border-border p-4 space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-mono font-semibold">{capability}</h2>
-        <span className="text-xs text-muted-foreground">
-          {slot.provider || 'unconfigured'}
-        </span>
+    <div className="gs-slot">
+      <div className="gs-slot-numeral" aria-hidden="true">
+        {numeral}
       </div>
-      <ToggleField
-        label="Enabled"
-        value={slot.enabled}
-        onChange={(enabled) => onChange({ enabled })}
-        helperText="When disabled, galley hides UI actions that require this capability."
-      />
-      <SelectField
-        label="Provider"
-        value={slot.provider || ''}
-        onChange={(provider) => onChange({ provider })}
-        options={[
-          { value: '', label: '— select —' },
-          ...PROVIDER_OPTIONS_BY_CAPABILITY[capability],
-        ]}
-        helperText="Informational label — galley does not branch on this."
-      />
-      <TextField
-        label="Base URL"
-        value={slot.baseUrl}
-        onChange={onUrlChange}
-        inputType="url"
-        placeholder="http://windows-box.tailnet.ts.net:8880"
-        error={urlError}
-        helperText="Leave empty to fall back to the shared default below."
-      />
-      <ActionField
-        label="Test connection"
-        description="GET /health on the configured base URL."
-        buttonLabel="Test"
-        onClick={onTest}
-        resultMessage={testResult}
-        resultKind={testKind}
-        disabled={!slot.baseUrl}
-      />
-      <AdvancedDisclosure>
-        <SecretField
-          label="API key (bearer token)"
-          value={slot.apiKey}
-          onChange={(apiKey) => onChange({ apiKey })}
-          helperText="Sent as Authorization: Bearer. Empty if the worker doesn't require auth."
+      <div className="gs-slot-body">
+        <div className="gs-slot-header">
+          <span className="gs-slot-id">{capability}</span>
+          <span className="gs-slot-provider">
+            {slot.provider || 'unconfigured'}
+          </span>
+        </div>
+        <ToggleField
+          label="Enabled"
+          value={slot.enabled}
+          onChange={(enabled) => onChange({ enabled })}
+          helperText="When off, galley hides UI actions that require this capability."
+        />
+        <SelectField
+          label="Provider"
+          value={slot.provider || ''}
+          onChange={(provider) => onChange({ provider })}
+          options={[
+            { value: '', label: '— select —' },
+            ...PROVIDER_OPTIONS_BY_CAPABILITY[capability],
+          ]}
+          helperText="Informational label — galley does not branch on this."
         />
         <TextField
-          label="Flavor"
-          value={slot.flavor ?? ''}
-          onChange={(flavor) => onChange({ flavor })}
-          placeholder="standard"
-          helperText="API-shape hint for clients adapting to non-canonical upstream APIs. Set to 'kokoro-local' for Kokoro-FastAPI's OpenAI-compatible Speech endpoint; leave empty otherwise."
+          label="Base URL"
+          value={slot.baseUrl}
+          onChange={onUrlChange}
+          inputType="url"
+          placeholder="http://windows-box.tailnet.ts.net:8880"
+          error={urlError}
+          helperText="Leave empty to fall back to the shared default below."
         />
-      </AdvancedDisclosure>
+        <ActionField
+          label="Test connection"
+          description="GET /health on the configured base URL."
+          buttonLabel="Test"
+          onClick={onTest}
+          resultMessage={testResult}
+          resultKind={testKind}
+          disabled={!slot.baseUrl}
+          emphasis="vermilion"
+        />
+        <AdvancedDisclosure>
+          <SecretField
+            label="API key (bearer token)"
+            value={slot.apiKey}
+            onChange={(apiKey) => onChange({ apiKey })}
+            helperText="Sent as Authorization: Bearer. Empty if the worker requires no auth."
+          />
+          <TextField
+            label="Flavor"
+            value={slot.flavor ?? ''}
+            onChange={(flavor) => onChange({ flavor })}
+            placeholder="standard"
+            helperText="API-shape hint for clients adapting to non-canonical upstream APIs. Set to 'kokoro-local' for Kokoro-FastAPI; leave empty otherwise."
+          />
+        </AdvancedDisclosure>
+      </div>
     </div>
   )
 }

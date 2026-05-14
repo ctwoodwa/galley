@@ -11,17 +11,6 @@ export interface SecretFieldProps {
   disabled?: boolean
 }
 
-/**
- * Field for secret values (bearer tokens, API keys). Masked by
- * default; reveal toggle shows the value briefly; copy button
- * pushes to clipboard.
- *
- * Per `docs/settings/ia.md`, never re-display a secret once written
- * is the long-term contract — but UI affordances on a single device
- * (where the secret is already in localStorage) include reveal +
- * copy for practical use. Future hardening: secrets move to OS
- * keystore via Sunfish kernel-security.
- */
 export function SecretField({
   label,
   value,
@@ -44,17 +33,16 @@ export function SecretField({
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1200)
     } catch {
-      // Ignore — copy-to-clipboard occasionally fails in
-      // permissionless contexts; user can manually reveal + copy.
+      // clipboard permission denied; user can manually reveal + copy
     }
   }
 
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium">
+    <div className="gs-field">
+      <label htmlFor={id} className="gs-field-label">
         {label}
       </label>
-      <div className="relative">
+      <div className="gs-secret-wrap">
         <input
           id={id}
           type={revealed ? 'text' : 'password'}
@@ -70,40 +58,35 @@ export function SecretField({
               .filter(Boolean)
               .join(' ') || undefined
           }
-          className={
-            'w-full pl-2.5 pr-20 py-1.5 text-sm rounded bg-background border focus:outline-none focus:ring-1 font-mono ' +
-            (error
-              ? 'border-destructive focus:ring-destructive'
-              : 'border-input focus:ring-ring')
-          }
+          className={'gs-input-secret' + (error ? ' error' : '')}
         />
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+        <div className="gs-secret-controls">
           <button
             type="button"
             onClick={onCopy}
             aria-label="Copy to clipboard"
             disabled={!value || disabled}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
+            className="gs-icon-btn"
           >
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check size={13} /> : <Copy size={13} />}
           </button>
           <button
             type="button"
             onClick={() => setRevealed((r) => !r)}
             aria-label={revealed ? 'Hide' : 'Reveal'}
             disabled={disabled}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
+            className="gs-icon-btn"
           >
-            {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {revealed ? <EyeOff size={13} /> : <Eye size={13} />}
           </button>
         </div>
       </div>
       {error ? (
-        <p id={errorId} role="alert" className="text-xs text-destructive">
+        <p id={errorId} role="alert" className="gs-field-error">
           {error}
         </p>
       ) : helperText ? (
-        <p id={helpId} className="text-xs text-muted-foreground">
+        <p id={helpId} className="gs-field-helper">
           {helperText}
         </p>
       ) : null}
