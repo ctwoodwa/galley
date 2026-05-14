@@ -193,6 +193,26 @@ def clear() -> None:
     _REGISTRY.clear()
 
 
+def snapshot() -> dict[str, DetectorEntry]:
+    """Return a copy of the current registry state.
+
+    Pair with `restore()` in tests that need to mutate the registry
+    (clear, register synthetic detectors) without affecting later tests.
+    Cheap — entries are stored by reference, not deep-copied.
+    """
+    return dict(_REGISTRY)
+
+
+def restore(snap: dict[str, DetectorEntry]) -> None:
+    """Replace the current registry state with `snap`.
+
+    Pair with `snapshot()` for test isolation. Existing entries are
+    discarded; restored entries are the ones in `snap`.
+    """
+    _REGISTRY.clear()
+    _REGISTRY.update(snap)
+
+
 def _first_doc_line(fn: DetectorFn) -> str:
     doc = (fn.__doc__ or "").strip()
     if not doc:

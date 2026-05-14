@@ -164,13 +164,19 @@ def test_book_profile_roundtrip_via_dict():
 def test_registry_starts_empty():
     """Phase 1 ships an empty registry — legacy detectors are not yet
     routed through it. Phase 2+ detectors register via @register."""
-    # Clear in case other tests dirtied it.
-    _registry.clear()
-    assert _registry.count() == 0
-    assert list(discover()) == []
+    # Snapshot + restore so we don't wipe out detectors other test files
+    # registered at import time (anti_ai_lexical, proselint, sonics).
+    snap = _registry.snapshot()
+    try:
+        _registry.clear()
+        assert _registry.count() == 0
+        assert list(discover()) == []
+    finally:
+        _registry.restore(snap)
 
 
 def test_register_decorator_records_entry():
+    snap = _registry.snapshot()
     _registry.clear()
 
     @register(
@@ -190,10 +196,11 @@ def test_register_decorator_records_entry():
     assert entry.description == "Test-only detector for the canary."
     assert entry.default_routing == "local"  # local-first default per ADR-0007
 
-    _registry.clear()
+    _registry.restore(snap)
 
 
 def test_register_filtering_by_family_and_tier():
+    snap = _registry.snapshot()
     _registry.clear()
 
     @register(name="d1", tier="stdlib", family="literary_device")
@@ -219,12 +226,13 @@ def test_register_filtering_by_family_and_tier():
     anti_ai = discover(family="anti_ai")
     assert {e.name for e in anti_ai} == {"d3"}
 
-    _registry.clear()
+    _registry.restore(snap)
 
 
 def test_register_rejects_duplicate_names():
     import pytest as _pytest
 
+    snap = _registry.snapshot()
     _registry.clear()
 
     @register(name="dupe", tier="stdlib", family="literary_device")
@@ -237,7 +245,7 @@ def test_register_rejects_duplicate_names():
         def second(prose, *, config, doc=None, api_client=None):
             return []
 
-    _registry.clear()
+    _registry.restore(snap)
 
 
 # ─── Fixture file presence ─────────────────────────────────────────────────

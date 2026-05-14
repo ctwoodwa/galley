@@ -4,9 +4,58 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
-### Phase 3 — proselint + sonics (planned)
-- proselint integration (BSD-3); dedup against own detectors
-- Alliteration / assonance / consonance via `pronouncing` + CMU dict
+### Phase 4 — Anna decoupling (planned)
+- Lift 9 Anna-calibrated detectors (motif lists, filter-words, lexical-chain
+  stopwords, self-referential frames, confirmation-tag regex, echo-and-
+  confirm params) into `BookProfile`-loaded config.
+- Populate `books/the-inverted-stack.yaml` with extracted Anna calibration.
+
+### Phase 3 — proselint + sonics (2026-05-14)
+
+**Integrations**
+(`lib/prose_telemetry/src/prose_telemetry/detectors/integrations/`):
+- `proselint_adapter.py` — wraps proselint 0.16+ (BSD-3) as a registry
+  detector. `DEDUPED_FAMILIES` (cliches, redundancy, weasel_words, hedging)
+  disabled by default to avoid overlap with handcount detectors. Book
+  profiles override via `DetectorConfig.extra['proselint']['disabled_families']`.
+
+**Sonics pack** (`lib/prose_telemetry/src/prose_telemetry/detectors/sonics/`):
+- `phonemes.py` — pronouncing (BSD-2) + CMU dict (public domain) wrapper.
+  Cached lookups, vowel/consonant classification, stopword list,
+  orthographic fallback for OOV words.
+- `alliteration.py` — runs of 3+ consecutive content words sharing the
+  same initial consonant phoneme. Stopwords don't break runs. Min run
+  length configurable per book.
+- `assonance.py` — sentence-level vowel-phoneme dominance (≥ 50% of
+  vowels share one phoneme). Informational only (confidence 0.55).
+- `consonance.py` — sentence-level consonant-phoneme dominance.
+  Informational only.
+
+**Registry infrastructure** (`lib/_common/registry.py`):
+- `snapshot()` and `restore()` for test isolation when modules
+  auto-register at import time.
+
+**Tests:**
+- `test_proselint_integration.py` (12 tests) — registration, dedup,
+  Finding shape, config overrides.
+- `test_sonics.py` (22 tests) — phoneme helpers, alliteration on known
+  fixtures, assonance/consonance smoke, empty-input safety.
+- Updated `test_canary.py` to snapshot/restore around registry-clearing
+  tests so Phase 2+ detector registrations survive.
+- Combined suite: 98/98 pass.
+
+**Dependencies added** (`prose_telemetry/pyproject.toml`):
+- `proselint >=0.13` (BSD-3-Clause)
+- `pronouncing >=0.2` (BSD-2-Clause; pulls cmudict, public domain)
+
+**Gap coverage delta:**
+- Anti-AI tells: 12/29 dedicated → ~20/29 (proselint's net-new families:
+  archaism, dates_times, industrial_language, lexical_illusions,
+  malapropisms, mixed_metaphors, nonwords, oxymorons, skunked_terms,
+  social_awareness, terms, typography, uncomparables, etc. — ~13 families
+  available behind one detector).
+- Literary devices: 11/43 → 14/43 (added alliteration, assonance,
+  consonance to the sonics group F33-F35 from the catalog).
 
 ### Phase 2 — High-yield additions (2026-05-14)
 

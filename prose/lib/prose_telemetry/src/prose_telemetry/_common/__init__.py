@@ -25,6 +25,8 @@ from prose_telemetry._common.registry import (
     discover,
     get,
     register,
+    restore,
+    snapshot,
 )
 
 __all__ = [
@@ -37,4 +39,6 @@ __all__ = [
     "discover",
     "get",
     "register",
+    "restore",
+    "snapshot",
 ]

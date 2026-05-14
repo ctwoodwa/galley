@@ -15,6 +15,8 @@ dependencies = [
     "pyyaml >=6",
     "textstat >=0.7",
     "markdown-it-py >=3",
+    "proselint >=0.13",
+    "pronouncing >=0.2",
 ]
 
 [project.scripts]
