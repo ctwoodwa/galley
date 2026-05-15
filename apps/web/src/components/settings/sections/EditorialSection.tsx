@@ -6,6 +6,7 @@ import {
 } from '@/api/editorialPrefs'
 import { useBookRegistry } from '@/api/bookRegistry'
 import { useChatPrefs } from '@/api/chatPrefs'
+import { useTelemetryPrefs } from '@/api/telemetryPrefs'
 import { SettingsSection } from '../SettingsSection'
 import { AdvancedDisclosure } from '../AdvancedDisclosure'
 import { RadioField } from '../fields/RadioField'
@@ -27,6 +28,8 @@ export function EditorialSection() {
   const prefs = useActiveBookPrefs()
   const chatEnabled = useChatPrefs((s) => s.enabled)
   const setChatEnabled = useChatPrefs((s) => s.setEnabled)
+  const telemetryEnabled = useTelemetryPrefs((s) => s.enabled)
+  const setTelemetryEnabled = useTelemetryPrefs((s) => s.setEnabled)
 
   return (
     <SettingsSection
@@ -40,6 +43,12 @@ export function EditorialSection() {
         value={chatEnabled}
         onChange={setChatEnabled}
         helperText="When on, ⌘K / Ctrl+K toggles a right-docked chat panel inside the reader. Uses the LLM configured in the Services section. Disable to hide the feature entirely."
+      />
+      <ToggleField
+        label="Chapter telemetry panel"
+        value={telemetryEnabled}
+        onChange={setTelemetryEnabled}
+        helperText="When on, ⌘M / Ctrl+M toggles a left-docked panel that runs the prose-telemetry pipeline on the current chapter and shows the verdict + findings. Disable to hide the feature entirely."
       />
       <TextField
         label="Active voice"

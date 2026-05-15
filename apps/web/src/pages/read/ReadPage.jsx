@@ -4,6 +4,10 @@ import {
   EditorialChatPanel,
   useChatKeybind,
 } from '../../features/chat'
+import {
+  ChapterTelemetryPanel,
+  useTelemetryKeybind,
+} from '../../features/telemetry'
 
 export default function ReadPage() {
   const {
@@ -14,15 +18,25 @@ export default function ReadPage() {
     onReaderStateChange,
   } = useOutletContext()
 
-  // ⌘K / Ctrl+K toggles the chat panel; Escape closes it when focused.
+  // ⌘K / Ctrl+K toggles the chat panel; ⌘M / Ctrl+M toggles the
+  // telemetry panel. Both close on Escape when their own input has
+  // focus.
   useChatKeybind()
+  useTelemetryKeybind()
 
-  const chatPanel = selected ? (
-    <EditorialChatPanel
-      bookId={bookId}
-      chapterId={selected.id}
-      chapterTitle={selected.title}
-    />
+  const chapterPanels = selected ? (
+    <>
+      <ChapterTelemetryPanel
+        bookId={bookId}
+        chapterId={selected.id}
+        chapterTitle={selected.title}
+      />
+      <EditorialChatPanel
+        bookId={bookId}
+        chapterId={selected.id}
+        chapterTitle={selected.title}
+      />
+    </>
   ) : null
 
   if (selected) {
@@ -39,7 +53,7 @@ export default function ReadPage() {
           onReaderStateChange={onReaderStateChange}
           reviewComments={reviewSession.comments}
         />
-        {chatPanel}
+        {chapterPanels}
       </>
     )
   }

@@ -1,0 +1,305 @@
+/*
+ * Chapter-telemetry panel — left-docked, theme-aware.
+ *
+ * Sits on the LEFT so it doesn't overlap the editorial chat panel
+ * (which docks right). Reads only shadcn CSS variables so it flips
+ * palette with the rest of the app.
+ */
+
+.telemetry-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: clamp(320px, 28vw, 440px);
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-right: 1px solid hsl(var(--border));
+  box-shadow: 8px 0 24px -16px hsl(var(--foreground) / 0.2);
+  z-index: 59;  /* below chat panel's 60 so chat wins focus precedence */
+  font-family: var(--font);
+}
+
+.telemetry-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+.telemetry-panel-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.telemetry-panel-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground));
+}
+
+.telemetry-panel-chapter {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.telemetry-panel-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.telemetry-icon-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 0.3rem;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.telemetry-icon-btn:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--border));
+}
+
+.telemetry-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.telemetry-panel-scroller {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.telemetry-panel-empty {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+}
+
+.telemetry-panel-empty p {
+  margin: 0.25rem 0;
+}
+
+.telemetry-panel-hint {
+  margin-top: 0.5rem !important;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.telemetry-error {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: hsl(var(--destructive) / 0.1);
+  border: 1px solid hsl(var(--destructive) / 0.3);
+  border-radius: var(--radius);
+  color: hsl(var(--destructive));
+  font-size: 0.875rem;
+}
+
+.telemetry-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.telemetry-section-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+.telemetry-section-title-blocker {
+  color: hsl(var(--destructive));
+}
+
+.telemetry-section-title-warning {
+  /* warm amber — sourced from the verdict-yellow tone below */
+  color: hsl(38 92% 50%);
+}
+
+.telemetry-verdict-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--secondary));
+}
+
+.telemetry-verdict-card.telemetry-verdict-red {
+  background: hsl(var(--destructive) / 0.12);
+  border-color: hsl(var(--destructive) / 0.4);
+  color: hsl(var(--destructive));
+}
+
+.telemetry-verdict-card.telemetry-verdict-yellow {
+  background: hsl(38 92% 50% / 0.12);
+  border-color: hsl(38 92% 50% / 0.4);
+  color: hsl(38 92% 40%);
+}
+
+.telemetry-verdict-card.telemetry-verdict-green {
+  background: hsl(142 76% 36% / 0.12);
+  border-color: hsl(142 76% 36% / 0.4);
+  color: hsl(142 76% 32%);
+}
+
+.telemetry-verdict-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.telemetry-verdict-label {
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.telemetry-verdict-sub {
+  font-size: 0.8125rem;
+  opacity: 0.9;
+}
+
+.telemetry-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.telemetry-meta-grid > div {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.75rem;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.telemetry-meta-num {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1.1;
+}
+
+.telemetry-meta-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.15rem;
+}
+
+.telemetry-finding-list,
+.telemetry-metric-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.telemetry-finding {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.telemetry-finding-blocker {
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.25);
+}
+
+.telemetry-finding-warning {
+  background: hsl(38 92% 50% / 0.08);
+  color: hsl(38 92% 35%);
+  border-color: hsl(38 92% 50% / 0.25);
+}
+
+.telemetry-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 0.8125rem;
+}
+
+.telemetry-metric:last-child {
+  border-bottom: none;
+}
+
+.telemetry-metric-name {
+  font-family: var(--font-mono);
+  color: hsl(var(--foreground));
+}
+
+.telemetry-metric-count {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.telemetry-metric-per1k {
+  margin-left: 0.4rem;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+}
+
+.telemetry-panel-footer {
+  padding: 0.6rem 1rem;
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.telemetry-spinner {
+  display: inline-block;
+  animation: telemetry-spin 1s linear infinite;
+}
+
+@keyframes telemetry-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
