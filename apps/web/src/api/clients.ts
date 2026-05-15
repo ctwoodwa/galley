@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import {
   TTSClient,
   type TTSFlavor,
@@ -28,8 +29,18 @@ import { useApiConfig, resolveService } from './config'
 export type TTSTier = 'fast' | 'quality'
 export type SttTier = 'fast' | 'quality'
 
+/**
+ * `resolveService` returns a freshly-constructed `{baseUrl, apiKey, flavor}`
+ * object on every call. Without `useShallow`, Zustand 5 + React 19 detect
+ * this as a snapshot-mismatch on every render and force an infinite
+ * re-render loop ("getSnapshot should be cached"). `useShallow` shallow-
+ * compares the returned object so identical contents share identity.
+ *
+ * This loop manifested on /read whenever ChapterView mounted: useDictation
+ * → useSttClient → useResolved('stt/fast') → fresh-ref selector → loop.
+ */
 function useResolved(capability: CapabilityId) {
-  return useApiConfig((s) => resolveService(s, capability))
+  return useApiConfig(useShallow((s) => resolveService(s, capability)))
 }
 
 export function useTTSClient(tier: TTSTier = 'fast') {

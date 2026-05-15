@@ -58,12 +58,19 @@ export function ChapterTelemetryPanel({
   const [presetOverride, setPresetOverride] = useState<Preset | null>(null)
   const [expandedDetector, setExpandedDetector] = useState<string | null>(null)
 
+  // Auto-measure on first open per chapter. Guard on `lastFetchedAt`
+  // rather than `result` so a failed measurement (result: null,
+  // loading: false, error: <msg>) doesn't immediately retry — that
+  // produced an unbounded re-render loop when the chapter's measure
+  // endpoint kept failing (e.g., book.editorial.yaml missing, prose
+  // CLI venv not installed). Refresh + preset-change paths still
+  // re-run measurement via explicit handler calls.
   useEffect(() => {
     if (!enabled || !visible) return
-    if (!entry?.result && !entry?.loading) {
-      void measure(bookId, chapterId, presetOverride ? { presetOverride } : undefined)
-    }
-  }, [enabled, visible, bookId, chapterId, entry?.result, entry?.loading, measure, presetOverride])
+    if (entry?.loading) return
+    if (entry?.lastFetchedAt) return
+    void measure(bookId, chapterId, presetOverride ? { presetOverride } : undefined)
+  }, [enabled, visible, bookId, chapterId, entry?.lastFetchedAt, entry?.loading, measure, presetOverride])
 
   if (!enabled || !visible) return null
 

@@ -1,7 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /*
  * Galley theme system — shadcn CSS-variable model.
  *
@@ -12,9 +8,17 @@
  *
  * Selection is driven by `data-theme="<family>"` + `.dark` on <html>
  * via the ThemeProvider (mounted in App.jsx).
+ *
+ * NOTE — `@import` MUST precede all other statements (CSS spec; postcss
+ * warns otherwise). Comments are fine before it; @tailwind directives
+ * are not.
  */
 
 @import './themes/index.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /*
  * Legacy variable bridge — maps the names the rest of App.css already
