@@ -67,14 +67,22 @@ def _merge(stdlib_result: dict[str, Any], spacy_result: dict[str, Any]) -> dict[
     # Append spaCy findings.
     merged["detected_devices"].extend(spacy_result.get("detected_devices", []))
     # Append spaCy metrics with the same per-device shape as stdlib.
+    # Carry through optional gradient fields (high_confidence_count,
+    # weighted_count, high_confidence_per_1k_tokens) when present so the
+    # verdict layer can use confidence-aware counts.
     for met in spacy_result.get("metrics", []):
-        merged["metrics"].append({
+        row = {
             "device": met["device"],
             "raw_count": met.get("raw_count", 0),
             "held_count": 0,
             "count_per_1k_tokens": met.get("count_per_1k_tokens", 0),
             "sentence_coverage_pct": 0,
-        })
+        }
+        for opt in ("high_confidence_count", "weighted_count",
+                    "high_confidence_per_1k_tokens"):
+            if opt in met:
+                row[opt] = met[opt]
+        merged["metrics"].append(row)
     # Annotate that both tiers ran.
     merged["_pipeline"] = {
         "stdlib_handcount": True,
@@ -105,9 +113,19 @@ def _merge(stdlib_result: dict[str, Any], spacy_result: dict[str, Any]) -> dict[
         else:
             passes.append("isocolon")
     if "distributed_chiasmus" in by_dev:
-        n = by_dev["distributed_chiasmus"]["raw_count"]
-        if n >= 5:
-            warnings.append(f"distributed_chiasmus: {n} ABBA reversal patterns (often signal of motif over-use)")
+        chi = by_dev["distributed_chiasmus"]
+        # Verdict uses high-confidence (full 0.7) count only — pairs touching
+        # the detector's reduced-confidence stopwords emit at 0.4 and don't
+        # trigger warnings unless density is exceptional. The total raw_count
+        # is still surfaced in the metric for inspection.
+        high = chi.get("high_confidence_count", chi.get("raw_count", 0))
+        raw = chi.get("raw_count", high)
+        if high >= 5:
+            note = f" (+{raw - high} reduced-confidence pairs filtered)" if raw > high else ""
+            warnings.append(
+                f"distributed_chiasmus: {high} high-confidence ABBA reversal pattern(s)"
+                f"{note}"
+            )
         else:
             passes.append("distributed_chiasmus")
     if "nominalization" in by_dev:
@@ -181,7 +199,27 @@ def cmd_measure(args) -> None:
         _status(f"[spacy]  loading model + analyzing...")
         from prose_telemetry import load_nlp, analyze_chapter
         nlp = load_nlp()
-        spacy_result = analyze_chapter(nlp, chapter_path)
+        # Pull gradient-threshold config for spaCy-tier detectors from the
+        # BookProfile. Nominalization uses per-lemma soft caps; chiasmus
+        # uses reduced-confidence lemmas. Both layer over detector
+        # built-in defaults.
+        nom_cfg = profile.detector("nominalization")
+        chi_cfg = profile.detector("distributed_chiasmus")
+        nom_soft_caps: dict[str, int] = {}
+        for w in (nom_cfg.stopwords or []):
+            # Legacy bare-string entry → effectively-unlimited cap.
+            nom_soft_caps[w.lower()] = 999
+        explicit_caps = nom_cfg.extra.get("soft_caps") or {}
+        if isinstance(explicit_caps, dict):
+            for k, v in explicit_caps.items():
+                nom_soft_caps[str(k).lower()] = int(v)
+        chi_reduced = set(chi_cfg.stopwords) if chi_cfg.stopwords else None
+        spacy_result = analyze_chapter(
+            nlp,
+            chapter_path,
+            nominalization_soft_caps=nom_soft_caps or None,
+            chiasmus_reduced_confidence_lemmas=chi_reduced,
+        )
         # Build a fresh doc on the chapter's plain-text body so the
         # registry pass can share it without re-parsing.
         try:

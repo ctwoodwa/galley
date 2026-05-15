@@ -3,9 +3,16 @@
 Registry wrapper around `spacy_detectors.detect_distributed_chiasmus`.
 Requires a parsed spaCy `Doc` on the `doc` kwarg.
 
-Configurable threshold:
+Configurable knobs:
   - `window` (int, default 30) — max token distance to look ahead for
     the reversed pair before giving up.
+  - `DetectorConfig.stopwords` — book-specific content lemmas added to
+    the detector's built-in reduced-confidence set. ABBA pairs touching
+    these lemmas are still surfaced but at reduced confidence (0.4
+    instead of 0.7); they appear in the report so authors can inspect
+    but don't trip warnings on their own. Useful for words whose
+    cross-pairing is content-driven (e.g. 'record/speak' in a closing
+    chant where the doubling is deliberate).
 """
 
 from __future__ import annotations
@@ -36,7 +43,8 @@ def detect_distributed_chiasmus(
     if not config.enabled or doc is None:
         return []
     window = int(config.extra.get("window", 30))
-    raw = _impl(doc, window=window)
+    reduced = set(config.stopwords) if config.stopwords else None
+    raw = _impl(doc, window=window, reduced_confidence_lemmas=reduced)
     return [
         Finding(
             type=r["type"],

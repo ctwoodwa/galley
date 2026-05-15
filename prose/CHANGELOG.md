@@ -4,6 +4,70 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Phase 6.8 — Gradient thresholds for spaCy detectors (2026-05-15)
+
+Replaced binary stopword sets in `nominalization` and `distributed_chiasmus`
+with **gradient thresholds** appropriate to each detector type.
+
+**Nominalization** now uses **per-lemma soft caps**. Each lemma has a
+maximum-content count; first N occurrences are treated as content
+vocabulary (not emitted), occurrence #(N+1) onward fires as findings
+with `occurrence_index`, `soft_cap`, and `over_cap_by` in the payload.
+Built-in defaults cover ~35 common abstract nouns (`question: 8`,
+`conversation: 5`, `decision: 5`, `moment: 8`, `information: 4`, etc.).
+Book overrides via `DetectorConfig.extra.soft_caps` (dict) merge with
+defaults; legacy `stopwords: [list]` form treated as `{lemma: 999}` for
+backwards compatibility.
+
+**Distributed chiasmus** now uses **reduced-confidence pairs**. Pairs
+touching a reduced-confidence lemma still detect but emit at 0.4
+confidence instead of 0.7. The verdict layer uses
+`high_confidence_count` (full-confidence pairs only) for the warning
+trigger; reduced pairs remain in `detected_devices` for inspection.
+Built-in defaults cover universal cross-pair noise (speech / motion /
+perception verbs, temporal nouns, body parts, generic narrative nouns).
+Book overrides via `DetectorConfig.stopwords` extend the reduced set.
+
+Output schema gains optional fields per detector that supports the
+gradient: `high_confidence_count`, `weighted_count`,
+`high_confidence_per_1k_tokens`. All preserved through stdlib+spaCy
+merge in `cli._merge`.
+
+Verdict logic in `cli.py` updated for chiasmus to trigger on
+`high_confidence_count >= 5` rather than `raw_count >= 5`, surfacing
+real rhetorical ABBA while letting common-content cross-pairs through.
+
+Files: `spacy_detectors.py` (gradient logic + metrics emission),
+`detectors/spacy/{nominalization,distributed_chiasmus}.py` (registry
+wrappers reading `DetectorConfig.extra`), `cli.py` (verdict + merge),
+`books/README.md` (gradient-thresholds section). 294 tests pass.
+
+### Phase 8 batch 2a+ — `redundant_explicit_predicate` detector (2026-05-15)
+
+New `voice`-family stdlib detector. Catches the pattern of a short echo
+sentence that re-states a predicate already established in the prior
+sentence — e.g. `"I was prepared to be disappointed by it. I was not
+disappointed."` where the trim form `"I was not."` is tighter.
+
+Heuristic: sentence pair (S1, S2) where S2 ≤ 8 word-tokens, opens with
+a personal pronoun, contains a copula/aux, contains a content word
+also in the last 12 tokens of S1, and S2 doesn't introduce new
+specificity (digits, mid-sentence proper nouns).
+
+Each finding carries `echo_word`, `first_sentence`, `second_sentence`,
+and `trim_suggestion` (e.g. `"I was not."`) so downstream UIs can show
+the calibrated rewrite inline.
+
+Confidence 0.75. Registers as `family=voice, tier=stdlib`. 9 unit tests;
+total registry size 78 → 79 detectors.
+
+Known limitations (deferred to a follow-up): `_NEGATIONS` set doesn't
+yet include `never` / `no` / `nothing`, so the trim suggestion for
+`"I have never liked cold."` is incorrect (should be `"I have not."`
+not `"I have."`); predicate-similarity tightening would eliminate two
+false-positive flavors observed during ch01 validation. Both tracked in
+the metric-improvements plan doc in the book repo.
+
 ### Phase 7 — BookNLP integration + story_canon expansion (planned)
 - Integrate BookNLP (MIT) for character clustering, coref, quote
   attribution, event detection.
