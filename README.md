@@ -74,22 +74,32 @@ integrations/
 
 ## Setup
 
+Galley installs in three tracks — pick what you need:
+
+| Track | What you get | Where it runs |
+|---|---|---|
+| **1. Web + book-server (dev)** | The galley UI in a browser at `localhost:5173`. Cross-platform; nothing native to build. | Any OS with Node 22+ and pnpm 10.33.4+. |
+| **2. Native desktop app** | A native `.app` / `.dmg` (Mac) or `.msi` / `.exe` (Windows) wrapping the web app + tray menu + book-server supervisor. | Mac or Windows. Requires Rust + Tauri CLI + platform build chain. |
+| **3. GPU worker host** | TTS / STT / image / music / LLM workers reachable over a Tailnet. | Typically Windows or Linux with NVIDIA / Apple Silicon. |
+
+**Full step-by-step prereqs + install commands for all three tracks on Mac, Windows, and Linux** live in [`docs/INSTALL.md`](docs/INSTALL.md). It covers Node + pnpm versions, Rust + Tauri CLI install for each OS, MSVC Build Tools on Windows, Xcode CLT on Mac, the GTK / webkit2gtk packages on Linux, Tailscale-based multi-machine wiring, per-capability worker recommendations, code-signing caveats for the unsigned v0.1.0 builds, and a troubleshooting table.
+
+### Quickstart (Track 1 — web + book-server)
+
 ```bash
+git clone https://github.com/ctwoodwa/galley.git
+cd galley
 pnpm install
+pnpm dev    # Vite at http://localhost:5173, book-server at :3080
 ```
 
-Optional one-time:
+That's enough to see the UI. For the native desktop app or a GPU worker host, follow [`docs/INSTALL.md`](docs/INSTALL.md).
+
+Optional one-time wiring:
 - Copy `integrations/the-inverted-stack/sync.config.example.json` → `sync.config.json` and set your book repo path (book-editing features only).
+- Or use Settings → Books → Add Book in the UI.
 
-## Dev
-
-```bash
-pnpm dev
-```
-
-Vite serves `http://localhost:5173`. The book-server starts via Turbo if it's wired into your `turbo.json` dev pipeline; if not, run it separately with `pnpm --filter @galley/book-server dev`.
-
-See [`docs/SMOKE-TEST.md`](docs/SMOKE-TEST.md) for the URL + API verification checklist, and [`docs/AUDIO-EDITOR-SPEC.md`](docs/AUDIO-EDITOR-SPEC.md) for the audio-first prose editor design + phase plan.
+See [`docs/SMOKE-TEST.md`](docs/SMOKE-TEST.md) for URL + API verification, and [`docs/AUDIO-EDITOR-SPEC.md`](docs/AUDIO-EDITOR-SPEC.md) for the audio-first prose editor design.
 
 ## Test
 
@@ -103,6 +113,8 @@ pnpm --filter @galley/api-client test   # API client unit tests
 ```bash
 pnpm build
 ```
+
+For the native desktop bundle (`.dmg` / `.msi`), see [`apps/desktop/README.md`](apps/desktop/README.md) or the Track 2 section of [`docs/INSTALL.md`](docs/INSTALL.md).
 
 ## Future work
 
