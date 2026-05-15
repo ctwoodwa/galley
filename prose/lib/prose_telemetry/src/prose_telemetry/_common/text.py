@@ -44,3 +44,14 @@ def word_tokens(text: str) -> list[str]:
     Mirrors the handcount script's `tokens()` so detectors migrated
     from there produce identical counts."""
     return re.findall(r"[^\W\d_]+(?:[''’-][^\W\d_]+)*", text, re.UNICODE)
+
+
+def is_dialogue(sentence: str) -> bool:
+    """Heuristic: a sentence is dialogue if it begins or ends with a
+    quote character (ASCII, curly, or paired). Used by narrator-only
+    detectors (statement_then_reversal, rhetorical questions, …) to
+    exclude conversational pivots that aren't narrator anti-patterns."""
+    s = sentence.strip()
+    if not s:
+        return False
+    return s[0] in ('"', '“', '”') or s[-1] in ('"', '“', '”')
