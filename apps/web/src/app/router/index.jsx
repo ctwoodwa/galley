@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
-import LibraryPage from '../../pages/library/LibraryPage.jsx'
+import HomePage from '../../pages/home/HomePage.tsx'
 import AppLayout from '../layouts/AppLayout.jsx'
 import ReadPage from '../../pages/read/ReadPage.jsx'
 import StudioLayout from '../../pages/studio/StudioLayout.jsx'
@@ -39,7 +39,7 @@ const wrapSettings = (el) => <Suspense fallback={settingsFallback}>{el}</Suspens
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <LibraryPage />,
+    element: <HomePage />,
   },
   {
     path: '/read/:bookId',
