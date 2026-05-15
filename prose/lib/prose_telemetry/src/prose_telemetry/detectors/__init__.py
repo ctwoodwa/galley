@@ -1,19 +1,34 @@
 """Detector packs for galley/prose.
 
-Each sub-package houses one family of detectors:
+Importing this package imports every sub-package below, which triggers
+the `@register(...)` decorator on each detector. After this import,
+`_common.registry.discover()` returns the full set of production
+detectors.
+
+Sub-packages:
 
 - `anti_ai_lexical/` — regex-driven lookup detectors for the anti-AI-tells
   catalog. One LexicalLookupDetector class + N yaml data files; each
-  yaml registers as its own named detector via the central registry.
-
-Future sub-packages (added in later phases):
-
-- `anti_ai_structural/` (Phase 6) — markdown-AST-driven detectors:
-  -ing tail-phrases, rule-of-three density, false ranges, inline-header
-  bullets, title-case headings, fragmented headers.
-- `literary_devices/` (Phase 5) — spaCy-tier mid-complexity devices:
-  epistrophe, symploce, antimetabole, hypophora, erotema, prolepsis,
-  concession, distinctio, definition-by-negation.
-- `sonics/` (Phase 3) — phoneme-level alliteration / assonance /
-  consonance via the `pronouncing` library + CMU dict.
+  yaml registers as its own named detector via the central registry
+  (family='anti_ai', tier='lexical').
+- `anti_ai_structural/` — markdown-AST-driven detectors: -ing tail-
+  phrases, rule-of-three density, false ranges, inline-header bullets,
+  title-case headings, fragmented headers.
+- `devices/` — mid-complexity literary devices (Phase 5/6): epistrophe,
+  symploce, antimetabole, hypophora, erotema, prolepsis, concession,
+  distinctio, definition-by-negation, simile, litotes, climax.
+- `sonics/` — phoneme-level alliteration / assonance / consonance via
+  the `pronouncing` library + CMU dict.
+- `voice/` — Anna-decoupled detectors driven by BookProfile config:
+  filter_words, motif_overuse, self_referential_frame.
+- `integrations/` — third-party detector adapters (proselint).
 """
+
+# Side-effect imports: each module's @register decorators fire when
+# the module is loaded. `noqa: F401` suppresses unused-import warnings.
+from prose_telemetry.detectors import anti_ai_lexical  # noqa: F401
+from prose_telemetry.detectors import anti_ai_structural  # noqa: F401
+from prose_telemetry.detectors import devices  # noqa: F401
+from prose_telemetry.detectors import sonics  # noqa: F401
+from prose_telemetry.detectors import voice  # noqa: F401
+from prose_telemetry.detectors import integrations  # noqa: F401

@@ -36,6 +36,14 @@ def _find_book_repo(chapter_path: Path, override: Path | None) -> Path:
     return DEFAULT_BOOK_REPO
 
 
+def _read_chapter_prose(chapter_path: Path) -> str:
+    """Strip markdown chrome from a chapter file for registry detectors.
+    Mirrors `spacy_detectors._strip_to_prose` but available without
+    requiring spaCy to be loaded."""
+    from prose_telemetry.spacy_detectors import _strip_to_prose
+    return _strip_to_prose(chapter_path.read_text(encoding="utf-8"))
+
+
 def _load_handcount(book_repo: Path):
     """Dynamically import the stdlib handcount module from the book repo."""
     script_path = book_repo / "build" / "prose_telemetry_handcount.py"
@@ -140,19 +148,44 @@ def cmd_measure(args) -> None:
 
     book_repo = _find_book_repo(chapter_path, args.book_repo)
 
+    # Per-book editorial profile — book.editorial.yaml overlaid by the
+    # galley UI sidecar at <book_repo>/.galley/editorial.json. Drives
+    # the registry pass; handcount + spaCy ignore it for now.
+    from prose_telemetry._common.types import BookProfile
+    profile = BookProfile.from_book_root(book_repo)
+
     stdlib_result: dict = {}
     spacy_result: dict = {}
+    registry_result = None
 
     if not args.no_stdlib:
         print(f"[stdlib] handcount on {chapter_path.name}...")
         handcount = _load_handcount(book_repo)
         stdlib_result = handcount.measure(chapter_path)
 
+    spacy_doc = None
     if not args.no_spacy:
         print(f"[spacy]  loading model + analyzing...")
         from prose_telemetry import load_nlp, analyze_chapter
         nlp = load_nlp()
         spacy_result = analyze_chapter(nlp, chapter_path)
+        # Build a fresh doc on the chapter's plain-text body so the
+        # registry pass can share it without re-parsing.
+        try:
+            from prose_telemetry.spacy_detectors import _strip_to_prose
+            md_text = chapter_path.read_text(encoding="utf-8")
+            spacy_doc = nlp(_strip_to_prose(md_text))
+        except Exception:
+            spacy_doc = None
+
+    if not args.no_registry:
+        print(f"[registry] running {profile.book_id} profile "
+              f"(preset={profile.extra.get('_prose_preset', 'standard')})...")
+        from prose_telemetry.dispatch import run_registry
+        # Registry detectors take plain prose; reuse handcount's text
+        # extraction when available, else strip markdown ourselves.
+        prose_text = stdlib_result.get("_prose_text") or _read_chapter_prose(chapter_path)
+        registry_result = run_registry(prose_text, profile, doc=spacy_doc)
 
     if stdlib_result and spacy_result:
         merged = _merge(stdlib_result, spacy_result)
@@ -161,7 +194,25 @@ def cmd_measure(args) -> None:
     elif spacy_result:
         merged = spacy_result
     else:
-        sys.exit("Both --no-stdlib and --no-spacy specified; nothing to do.")
+        if registry_result is None:
+            sys.exit("All pipelines disabled; nothing to do.")
+        merged = {"document_metrics": {"word_count": registry_result.word_count},
+                  "detected_devices": [], "metrics": []}
+
+    # Attach the registry pass under its own top-level key. Existing
+    # downstream consumers of `detected_devices` / `metrics` keep their
+    # current behaviour; tooling that wants the registry view reads
+    # `registry_pipeline`.
+    if registry_result is not None:
+        merged["registry_pipeline"] = {
+            "book_id": profile.book_id,
+            "preset": profile.extra.get("_prose_preset", "standard"),
+            "active_voice": profile.voice,
+            "voice_pass_mode": profile.extra.get("_voice_pass_mode"),
+            "findings": registry_result.findings,
+            "metrics": registry_result.metrics,
+            "word_count": registry_result.word_count,
+        }
 
     # Determine output path.
     if args.out:
@@ -190,6 +241,10 @@ def cmd_measure(args) -> None:
     pipeline = merged.get("_pipeline", {})
     if pipeline.get("spacy_tier"):
         print(f"  spaCy:     {pipeline.get('spacy_model')} ({pipeline.get('spacy_version')})")
+    reg = merged.get("registry_pipeline")
+    if reg:
+        print(f"  registry:  {len(reg['metrics'])} detectors, "
+              f"{len(reg['findings'])} findings ({reg['preset']} preset)")
     print()
     if roll.get("blockers"):
         print("BLOCKERS:")
@@ -214,6 +269,8 @@ def main() -> None:
                    help="Skip spaCy-tier detectors (stdlib only)")
     m.add_argument("--no-stdlib", action="store_true",
                    help="Skip stdlib detectors (spaCy only)")
+    m.add_argument("--no-registry", action="store_true",
+                   help="Skip the registry-based detector pass")
     args = ap.parse_args()
     if args.cmd == "measure":
         cmd_measure(args)

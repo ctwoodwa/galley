@@ -25,7 +25,7 @@ medium with the same internal pattern:
 
 | Family | Status |
 |---|---|
-| `prose/` | Phase 0–6 complete: 38 stdlib + 4 spaCy + 4 anti-AI lexical + 9 mid-complexity device + 6 anti-AI structural + 3 sonics + 3 extra detectors. 181 tests green (incl. 16 for editorial-overlay merge). See `prose/ROADMAP.md`. |
+| `prose/` | Phase 0–6 + 6.5 complete: 38 stdlib + 4 spaCy + 27 registry-based detectors now reachable from production via `dispatch.run_registry`. Editorial overlay (`.galley/editorial.json`) flows through `BookProfile.from_book_root` into the dispatch — settings UI changes are observable in `prose measure` output. 187 tests green. See `prose/ROADMAP.md`. |
 | `speech/` | Reserved. TTS/STT-driven editing. |
 | `comics/` | Reserved. |
 | `video/` | Reserved. |
