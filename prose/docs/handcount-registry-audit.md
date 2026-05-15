@@ -117,10 +117,16 @@ when the yaml supplies a config; otherwise informational.
    the registry**, one family at a time. Each migrated detector starts
    honoring the editorial overlay. Pure mechanical work; high test
    coverage already exists for the registry pattern.
-3. **(Phase 8 candidate) Move the 4 spaCy-tier detectors** (`isocolon`,
-   `distributed_chiasmus`, `nominalizations`, `antithesis`) into the
-   registry. They currently run via `analyze_chapter()` and don't
-   honor `BookProfile`. Smaller than #2 — 4 detectors.
+3. ~~**(Phase 8 candidate) Move the 4 spaCy-tier detectors** into the
+   registry.~~ **Done 2026-05-14** — `detectors/spacy/{isocolon,
+   distributed_chiasmus, nominalization, antithesis}` are registered
+   under `tier='spacy'`, family='literary_device'. They now honour
+   `DetectorConfig.enabled` and `DetectorConfig.extra` (min_run,
+   window, min_side_tokens). Note: the legacy `analyze_chapter()`
+   pipeline ALSO still calls these four directly — intentional during
+   the transition; same finding appears in both `detected_devices` and
+   `registry_pipeline.findings`. Retiring `analyze_chapter`'s direct
+   calls is paired with the dashboard / Makefile rewiring.
 4. **Update the dashboard / book-repo Makefile consumers** to read
    `registry_pipeline.verdict` alongside the legacy `rollup`. Without
    this, the verdict drift from editorial-overlay scaling is in the
