@@ -1118,6 +1118,80 @@ app.put('/api/books/:bookId/profile/editorial', (req, res) => {
   }
 })
 
+// ── Editorial chat sidecar (per-chapter conversation history) ─────────
+// Persists the chat turns the user has with the editorial agent for a
+// given chapter as JSON at `<bookRoot>/.galley/chats/<chapterId>.json`.
+// The web app debounces writes the same way useEditorialPrefs does for
+// the editorial overlay (see apps/web/src/api/editorialChat.ts).
+
+function chapterChatPath(bookRoot, chapterId) {
+  // Chapter IDs are slugs (ASCII / dashes / colons). Sanitize defensively
+  // to keep the write confined to the chats dir.
+  const safe = String(chapterId).replace(/[^A-Za-z0-9._:-]/g, '_')
+  return path.join(bookRoot, '.galley', 'chats', `${safe}.json`)
+}
+
+app.get('/api/books/:bookId/chats/:chapterId', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const target = chapterChatPath(data.book.bookRoot, req.params.chapterId)
+  if (!fs.existsSync(target)) {
+    return res.json({ chat: null, updated_at: null })
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(target, 'utf8'))
+    let updatedAt = parsed.updated_at ?? null
+    if (!updatedAt) {
+      try { updatedAt = fs.statSync(target).mtime.toISOString() } catch { updatedAt = null }
+    }
+    res.json({ chat: parsed.chat ?? null, updated_at: updatedAt })
+  } catch (e) {
+    res.status(500).json({ error: `Failed to read chat sidecar: ${e.message}` })
+  }
+})
+
+app.put('/api/books/:bookId/chats/:chapterId', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const chat = req.body?.chat
+  if (!chat || typeof chat !== 'object' || !Array.isArray(chat.turns)) {
+    return res.status(400).json({ error: 'Body must be { chat: { turns: [...] } }' })
+  }
+  // Per-turn shape check — keep malformed turns out of disk state.
+  for (const t of chat.turns) {
+    if (typeof t !== 'object' || !t || !t.id || !t.role || typeof t.content !== 'string') {
+      return res.status(400).json({ error: 'Each turn must have {id, role, content}' })
+    }
+    if (!['user', 'assistant', 'system'].includes(t.role)) {
+      return res.status(400).json({ error: `Turn role must be user|assistant|system (got ${t.role})` })
+    }
+  }
+  const dir = path.join(data.book.bookRoot, '.galley', 'chats')
+  const target = chapterChatPath(data.book.bookRoot, req.params.chapterId)
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    const payload = {
+      schema_version: 1,
+      updated_at: new Date().toISOString(),
+      chat,
+    }
+    const tmp = target + '.tmp'
+    fs.writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8')
+    fs.renameSync(tmp, target)
+    res.json(payload)
+  } catch (e) {
+    res.status(500).json({ error: `Failed to write chat sidecar: ${e.message}` })
+  }
+})
+
+app.delete('/api/books/:bookId/chats/:chapterId', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  const target = chapterChatPath(data.book.bookRoot, req.params.chapterId)
+  if (fs.existsSync(target)) fs.unlinkSync(target)
+  res.json({ deleted: true })
+})
+
 // Run the prose-telemetry pipeline on a chapter and return the JSON
 // metrics. Two ways to identify the chapter:
 //   - `?chapter=<absolute_path>` — explicit file path on disk.

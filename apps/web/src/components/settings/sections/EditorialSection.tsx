@@ -5,10 +5,12 @@ import {
   useEditorialPrefs,
 } from '@/api/editorialPrefs'
 import { useBookRegistry } from '@/api/bookRegistry'
+import { useChatPrefs } from '@/api/chatPrefs'
 import { SettingsSection } from '../SettingsSection'
 import { AdvancedDisclosure } from '../AdvancedDisclosure'
 import { RadioField } from '../fields/RadioField'
 import { TextField } from '../fields/TextField'
+import { ToggleField } from '../fields/ToggleField'
 
 /**
  * Editorial section — second reference implementation, stress-tests the
@@ -23,6 +25,8 @@ export function EditorialSection() {
   const activeBookId = useBookRegistry((s) => s.activeBookId)
   const setPref = useEditorialPrefs((s) => s.setPref)
   const prefs = useActiveBookPrefs()
+  const chatEnabled = useChatPrefs((s) => s.enabled)
+  const setChatEnabled = useChatPrefs((s) => s.setEnabled)
 
   return (
     <SettingsSection
@@ -31,6 +35,12 @@ export function EditorialSection() {
       description={`Prose-review register, voice-pass behavior, and narrator voice for the active book — currently editing ${activeBookId}.`}
       scope="workspace"
     >
+      <ToggleField
+        label="Editorial chat panel"
+        value={chatEnabled}
+        onChange={setChatEnabled}
+        helperText="When on, ⌘K / Ctrl+K toggles a right-docked chat panel inside the reader. Uses the LLM configured in the Services section. Disable to hide the feature entirely."
+      />
       <TextField
         label="Active voice"
         value={prefs.activeVoice}
