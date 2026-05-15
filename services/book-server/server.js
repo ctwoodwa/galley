@@ -1118,6 +1118,70 @@ app.put('/api/books/:bookId/profile/editorial', (req, res) => {
   }
 })
 
+// Run the prose-telemetry pipeline on a chapter and return the JSON
+// metrics. Two ways to identify the chapter:
+//   - `?chapter=<absolute_path>` — explicit file path on disk.
+//   - `?chapterId=<id>` — resolved via the book's chapter catalog.
+// AI agents prefer this endpoint over shelling out to the CLI.
+app.post('/api/books/:bookId/measure', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+
+  let chapterPath = req.query.chapter || req.body?.chapter
+  const chapterId = req.query.chapterId || req.body?.chapterId
+  if (!chapterPath && chapterId) {
+    const ch = data.chapters.find(c => c.id === chapterId)
+    if (!ch) return res.status(404).json({ error: `Chapter "${chapterId}" not found in book` })
+    chapterPath = path.join(data.book.bookRoot, ch.source_path)
+  }
+  if (!chapterPath) {
+    return res.status(400).json({ error: 'Pass ?chapter=<path> or ?chapterId=<id>' })
+  }
+  if (!fs.existsSync(chapterPath)) {
+    return res.status(404).json({ error: `Chapter file not found: ${chapterPath}` })
+  }
+
+  // Skip flags map to CLI flags one-for-one.
+  const flags = []
+  if (req.query.no_stdlib === '1' || req.body?.no_stdlib) flags.push('--no-stdlib')
+  if (req.query.no_spacy === '1'  || req.body?.no_spacy)  flags.push('--no-spacy')
+  if (req.query.no_registry === '1' || req.body?.no_registry) flags.push('--no-registry')
+
+  const pythonBin = process.env.GALLEY_PROSE_PYTHON ||
+    path.join(__dirname, '..', '..', 'prose', 'lib', 'prose_telemetry', '.venv', 'bin', 'python')
+
+  const args = ['-m', 'prose_telemetry.cli', 'measure', chapterPath, '--stdout',
+                '--book-repo', data.book.bookRoot, ...flags]
+
+  const child = spawn(pythonBin, args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+
+  let stdout = ''
+  let stderr = ''
+  child.stdout.on('data', d => { stdout += d.toString('utf8') })
+  child.stderr.on('data', d => { stderr += d.toString('utf8') })
+  child.on('error', (err) => {
+    res.status(500).json({ error: `Failed to spawn prose-telemetry: ${err.message}` })
+  })
+  child.on('close', (code) => {
+    if (code !== 0) {
+      return res.status(500).json({
+        error: `prose-telemetry exited ${code}`,
+        stderr: stderr.slice(-2000),
+      })
+    }
+    try {
+      res.json(JSON.parse(stdout))
+    } catch (e) {
+      res.status(500).json({
+        error: `Failed to parse CLI output as JSON: ${e.message}`,
+        stdout_head: stdout.slice(0, 200),
+      })
+    }
+  })
+})
+
 app.get('/api/books/:bookId/chapters', (req, res) => {
   const data = getBook(req.params.bookId)
   if (!data) return res.status(404).json({ error: 'Book not found' })

@@ -158,14 +158,20 @@ def cmd_measure(args) -> None:
     spacy_result: dict = {}
     registry_result = None
 
+    # Status prints go to stderr when --stdout is set so they don't
+    # corrupt the JSON payload an AI agent / script is consuming.
+    status_stream = sys.stderr if args.stdout else sys.stdout
+    def _status(msg: str) -> None:
+        print(msg, file=status_stream)
+
     if not args.no_stdlib:
-        print(f"[stdlib] handcount on {chapter_path.name}...")
+        _status(f"[stdlib] handcount on {chapter_path.name}...")
         handcount = _load_handcount(book_repo)
         stdlib_result = handcount.measure(chapter_path)
 
     spacy_doc = None
     if not args.no_spacy:
-        print(f"[spacy]  loading model + analyzing...")
+        _status(f"[spacy]  loading model + analyzing...")
         from prose_telemetry import load_nlp, analyze_chapter
         nlp = load_nlp()
         spacy_result = analyze_chapter(nlp, chapter_path)
@@ -179,8 +185,8 @@ def cmd_measure(args) -> None:
             spacy_doc = None
 
     if not args.no_registry:
-        print(f"[registry] running {profile.book_id} profile "
-              f"(preset={profile.extra.get('_prose_preset', 'standard')})...")
+        _status(f"[registry] running {profile.book_id} profile "
+                f"(preset={profile.extra.get('_prose_preset', 'standard')})...")
         from prose_telemetry.dispatch import run_registry
         # Registry detectors take plain prose; reuse handcount's text
         # extraction when available, else strip markdown ourselves.
@@ -217,7 +223,13 @@ def cmd_measure(args) -> None:
             "verdict": reg_verdict.to_dict(),
         }
 
-    # Determine output path.
+    # Output: stdout for AI-agent / scripting use, file otherwise.
+    if args.stdout:
+        sys.stdout.write(json.dumps(merged, ensure_ascii=False))
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        return
+
     if args.out:
         out_path = args.out
     else:
@@ -300,6 +312,9 @@ def main() -> None:
                    help="Skip stdlib detectors (spaCy only)")
     m.add_argument("--no-registry", action="store_true",
                    help="Skip the registry-based detector pass")
+    m.add_argument("--stdout", action="store_true",
+                   help="Write the full metrics JSON to stdout (suppresses "
+                        "summary text). For AI-agent / scripting use.")
 
     init = sub.add_parser("init", help="Scaffold book.editorial.yaml for a new book")
     init.add_argument("book_root", type=Path,

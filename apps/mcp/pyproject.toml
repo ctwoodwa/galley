@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "galley-mcp"
+version = "0.1.0"
+description = "Model Context Protocol server exposing galley/prose telemetry to AI agents (Claude Desktop, Claude Code, etc.)."
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.0",
+  # prose_telemetry is installed editable from the sibling path so the
+  # MCP server reuses the same registry / dispatch / verdict code the
+  # CLI uses. See README for install instructions.
+  "prose-telemetry @ file:../../prose/lib/prose_telemetry",
+]
+
+[project.scripts]
+galley-mcp = "galley_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
