@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { CAPABILITIES, type CapabilityId, type ServiceConfig } from '@galley/api-client'
 import { useApiConfig } from '@/api/config'
+import {
+  authCategoryForProvider,
+  type AuthCategory,
+  type PluginManifest,
+} from '@/api/pluginRegistry'
 import { SettingsSection } from '../SettingsSection'
 import { AdvancedDisclosure } from '../AdvancedDisclosure'
 import { EntryCard } from '../EntryCard'
@@ -217,11 +222,10 @@ function ServiceSlotCard({ numeral, capability, slot, onChange }: ServiceSlotCar
         emphasis="vermilion"
       />
       <AdvancedDisclosure>
-        <SecretField
-          label="API key (bearer token)"
-          value={slot.apiKey}
-          onChange={(apiKey) => onChange({ apiKey })}
-          helperText="Sent as Authorization: Bearer. Empty if the worker requires no auth."
+        <AuthField
+          provider={slot.provider || ''}
+          apiKey={slot.apiKey}
+          onApiKeyChange={(apiKey) => onChange({ apiKey })}
         />
         <TextField
           label="Flavor"
@@ -240,5 +244,143 @@ function ServiceSlotCard({ numeral, capability, slot, onChange }: ServiceSlotCar
         />
       </AdvancedDisclosure>
     </EntryCard>
+  )
+}
+
+/**
+ * Auth field rendered inside a slot's AdvancedDisclosure. Branches on the
+ * selected provider's manifest:
+ *
+ *   - `api-key` (bearer / api-key-header / query-param) → existing
+ *     SecretField. Today's 8 cloud plugins all hit this path.
+ *   - `oauth` (oauth2 / oidc) → "Sign in with <provider>" stubbed button +
+ *     a status pill + read-only scopes list. The actual OAuth runtime
+ *     (loopback listener, PKCE, keychain) lands in Phase 2.
+ *   - `mtls` → read-only note; configuration deferred.
+ *   - `none` → hidden (local workers, anonymous endpoints).
+ *   - `unknown` (manifest not found, e.g. "Custom" provider) → fall back
+ *     to the SecretField so users with custom URLs / unrecognised
+ *     provider strings still have an auth surface.
+ */
+function AuthField({
+  provider,
+  apiKey,
+  onApiKeyChange,
+}: {
+  provider: string
+  apiKey: string
+  onApiKeyChange: (val: string) => void
+}) {
+  const { category, manifest } = authCategoryForProvider(provider)
+
+  if (category === 'oauth') {
+    return <OAuthAuthField manifest={manifest!} />
+  }
+
+  if (category === 'mtls') {
+    return <MtlsAuthField manifest={manifest!} />
+  }
+
+  if (category === 'none') {
+    return (
+      <p className="gs-field-helper" style={{ marginTop: 0 }}>
+        No authentication required. Local workers and anonymous endpoints
+        skip this field.
+      </p>
+    )
+  }
+
+  // `api-key` and `unknown` → SecretField. The legacy "Custom" sentinel
+  // and any provider not yet in the registry land in `unknown`.
+  return (
+    <SecretField
+      label={apiKeyFieldLabel(category, manifest)}
+      value={apiKey}
+      onChange={onApiKeyChange}
+      helperText={apiKeyHelperText(category, manifest)}
+    />
+  )
+}
+
+function apiKeyFieldLabel(
+  category: AuthCategory,
+  manifest: PluginManifest | null,
+): string {
+  if (category === 'api-key' && manifest?.authentication?.type === 'api-key-header') {
+    const header = manifest.authentication.header
+    return header ? `API key (${header})` : 'API key'
+  }
+  return 'API key (bearer token)'
+}
+
+function apiKeyHelperText(
+  category: AuthCategory,
+  manifest: PluginManifest | null,
+): string {
+  if (category !== 'api-key' || !manifest?.authentication) {
+    return 'Sent as Authorization: Bearer. Empty if the worker requires no auth.'
+  }
+  const a = manifest.authentication
+  const console = a.consoleUrl ?? a.signupUrl
+  const where = console ? ` Mint a key at ${console}.` : ''
+  if (a.type === 'api-key-header' && a.header) {
+    return `Sent as ${a.header} header.${where}`
+  }
+  if (a.type === 'query-param' && a.queryParam) {
+    return `Sent as ?${a.queryParam}=… query parameter.${where}`
+  }
+  return `Sent as Authorization: Bearer.${where}`
+}
+
+/**
+ * Phase 1 stub. The button click is wired in Phase 2 (Tauri-side OAuth
+ * runtime). Today it surfaces the auth shape so users can verify the
+ * manifest is correct and understand what the flow will do.
+ */
+function OAuthAuthField({ manifest }: { manifest: PluginManifest }) {
+  const oauth = manifest.authentication?.oauth
+  const mfa = manifest.authentication?.mfa
+  const providerLabel = oauth?.provider ?? 'provider'
+  const flowLabel =
+    oauth?.flow === 'device-code'
+      ? 'Device-code flow'
+      : oauth?.flow === 'client-credentials'
+        ? 'Client-credentials flow'
+        : 'Authorization-code with PKCE'
+
+  return (
+    <div className="gs-oauth-block">
+      <button
+        type="button"
+        className="gs-oauth-signin"
+        disabled
+        title="OAuth runtime ships in Phase 2 of the auth-taxonomy workstream."
+      >
+        Sign in with {providerLabel}
+      </button>
+      <p className="gs-field-helper" style={{ marginTop: '0.4rem' }}>
+        {flowLabel}. Token will land in the OS keychain (
+        {oauth?.tokenStorage ?? 'keychain'}).
+        {oauth?.scopes?.length
+          ? ` Scopes: ${oauth.scopes.join(', ')}.`
+          : ''}
+        {mfa?.providerEnforced
+          ? ` ${manifest.name} enforces 2FA at the provider; the IdP will challenge during sign-in.`
+          : ''}
+      </p>
+      <p className="gs-field-helper" style={{ marginTop: '0.2rem', opacity: 0.7 }}>
+        Sign-in is staged — the OAuth runtime ships in the next phase.
+      </p>
+    </div>
+  )
+}
+
+function MtlsAuthField({ manifest }: { manifest: PluginManifest }) {
+  return (
+    <p className="gs-field-helper" style={{ marginTop: 0 }}>
+      {manifest.name} uses mTLS. Galley honours the system trust store;
+      per-slot client-certificate configuration is reserved for a future
+      phase.
+    </p>
   )
 }

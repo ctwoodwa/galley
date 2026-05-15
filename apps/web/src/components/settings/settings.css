@@ -358,6 +358,41 @@
   margin-top: var(--gs-space-1);
 }
 
+/* OAuth sign-in block (ServicesSection, Phase 1 stub). The button is
+ * disabled until the Phase 2 runtime lands; rendering this block at all
+ * is the user-visible signal that the slot's plugin uses OAuth rather
+ * than a static API key. */
+.gs-oauth-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.gs-oauth-signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: var(--gs-text-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.gs-oauth-signin:not(:disabled):hover {
+  background: hsl(var(--background));
+  border-color: hsl(var(--ring));
+}
+
+.gs-oauth-signin:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .gs-input,
 .gs-input-secret,
 .gs-select {
