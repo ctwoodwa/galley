@@ -267,9 +267,27 @@ def cmd_measure(args) -> None:
             print(f"  ⚠ {w}")
 
 
+def cmd_init(args) -> None:
+    """Scaffold `<book_root>/book.editorial.yaml` for a new book."""
+    from prose_telemetry.init import init_book_editorial
+
+    result = init_book_editorial(
+        args.book_root,
+        book_id=args.book_id,
+        voice=args.voice,
+        genre=args.genre,
+        force=args.force,
+    )
+    if result.wrote:
+        print(f"Wrote {result.path}")
+    else:
+        sys.exit(f"Skipped {result.path}: {result.skipped_reason}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="prose-telemetry")
     sub = ap.add_subparsers(dest="cmd", required=True)
+
     m = sub.add_parser("measure", help="Run unified stdlib + spaCy detectors on a chapter")
     m.add_argument("chapter", type=Path, help="Path to the chapter markdown file")
     m.add_argument("--out", type=Path, default=None,
@@ -282,9 +300,24 @@ def main() -> None:
                    help="Skip stdlib detectors (spaCy only)")
     m.add_argument("--no-registry", action="store_true",
                    help="Skip the registry-based detector pass")
+
+    init = sub.add_parser("init", help="Scaffold book.editorial.yaml for a new book")
+    init.add_argument("book_root", type=Path,
+                      help="Path to the book repo root (directory).")
+    init.add_argument("--book-id", default=None,
+                      help="Book identifier (default: directory name).")
+    init.add_argument("--voice", default=None,
+                      help="Narrator voice id (default: null).")
+    init.add_argument("--genre", default="literary-fiction",
+                      help="Genre tag (default: literary-fiction).")
+    init.add_argument("--force", action="store_true",
+                      help="Overwrite existing book.editorial.yaml.")
+
     args = ap.parse_args()
     if args.cmd == "measure":
         cmd_measure(args)
+    elif args.cmd == "init":
+        cmd_init(args)
 
 
 if __name__ == "__main__":
