@@ -1,0 +1,43 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "replicate",
+  "name": "Replicate",
+  "version": "1.0",
+  "kind": "cloud",
+  "capabilities": ["image", "music"],
+  "flavor": "replicate",
+  "repository": "https://replicate.com",
+  "readmeUrl": "https://replicate.com/docs",
+  "license": "proprietary",
+  "description": "Multi-model hub fronting hundreds of community models (Stable Diffusion variants, FLUX, MusicGen, Stable Audio, etc.). Pay-per-second of GPU. Pick the model via the slot's `model` field.",
+  "hardware": {
+    "any": { "support": "best", "accel": "any" }
+  },
+  "defaults": {
+    "baseUrl": "https://api.replicate.com",
+    "model": "black-forest-labs/flux-schnell"
+  },
+  "endpoint": {
+    "baseUrl": "https://api.replicate.com",
+    "apiVersion": "v1",
+    "docsUrl": "https://replicate.com/docs/reference/http"
+  },
+  "authentication": {
+    "type": "bearer",
+    "header": "Authorization",
+    "apiKeyEnvVar": "REPLICATE_API_TOKEN",
+    "signupUrl": "https://replicate.com/signin",
+    "consoleUrl": "https://replicate.com/account/api-tokens"
+  },
+  "pricing": {
+    "url": "https://replicate.com/pricing",
+    "model": "pay-per-second",
+    "freeTier": "Free tier with monthly compute allowance for new accounts."
+  },
+  "terms": "https://replicate.com/terms",
+  "probe": {
+    "path": "/v1/account",
+    "method": "GET",
+    "expectedStatus": 200
+  }
+}

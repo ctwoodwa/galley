@@ -1,0 +1,43 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "anthropic-claude",
+  "name": "Anthropic Claude",
+  "version": "1.0",
+  "kind": "cloud",
+  "capabilities": ["llm"],
+  "flavor": "anthropic",
+  "repository": "https://www.anthropic.com",
+  "readmeUrl": "https://docs.anthropic.com/en/api/getting-started",
+  "license": "proprietary",
+  "description": "Claude API — primary LLM for galley's editorial agents (voice-pass suggestions, prose-review summarization, co-editor automation). Pay-per-token; broad context window; strong instruction-following.",
+  "hardware": {
+    "any": { "support": "best", "accel": "any" }
+  },
+  "defaults": {
+    "baseUrl": "https://api.anthropic.com",
+    "model": "claude-opus-4-7"
+  },
+  "endpoint": {
+    "baseUrl": "https://api.anthropic.com",
+    "apiVersion": "2023-06-01",
+    "docsUrl": "https://docs.anthropic.com/en/api/messages"
+  },
+  "authentication": {
+    "type": "api-key-header",
+    "header": "x-api-key",
+    "apiKeyEnvVar": "ANTHROPIC_API_KEY",
+    "signupUrl": "https://console.anthropic.com/login",
+    "consoleUrl": "https://console.anthropic.com/settings/keys"
+  },
+  "pricing": {
+    "url": "https://www.anthropic.com/pricing",
+    "model": "pay-per-token",
+    "freeTier": "Free trial credits via console.anthropic.com."
+  },
+  "terms": "https://www.anthropic.com/legal/aup",
+  "probe": {
+    "path": "/v1/messages",
+    "method": "POST",
+    "expectedStatus": 400
+  }
+}

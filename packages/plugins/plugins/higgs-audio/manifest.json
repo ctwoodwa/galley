@@ -1,0 +1,50 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "higgs-audio",
+  "name": "higgs-audio",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["tts/quality", "music"],
+  "flavor": "standard",
+  "repository": "https://github.com/boson-ai/higgs-audio",
+  "readmeUrl": "https://github.com/boson-ai/higgs-audio#readme",
+  "license": "Apache-2.0",
+  "description": "High-quality multilingual TTS + music generation. Supports zero-shot voice cloning from short reference clips. GPU strongly recommended; Mac Intel unsupported (no recent PyTorch wheels).",
+  "hardware": {
+    "macos-arm64":           { "support": "partial", "accel": "mps", "notes": "MPS works for inference but slower than CUDA; not all models supported." },
+    "macos-x86_64":          { "support": "unsupported", "accel": "cpu", "notes": "PyTorch dropped Intel-Mac wheels after 2.2.x; higgs-audio requires newer torch." },
+    "windows-x86_64-nvidia": { "support": "best", "accel": "cuda" },
+    "linux-x86_64-nvidia":   { "support": "best", "accel": "cuda" }
+  },
+  "defaults": {
+    "port": 8881,
+    "baseUrl": "http://localhost:8881"
+  },
+  "install": {
+    "prerequisites": ["python>=3.10", "git", "cuda-toolkit>=12.0 (windows/linux)", "ffmpeg"],
+    "installDirDefault": "${HOME}/galley-tools/higgs-audio",
+    "steps": {
+      "macos": [
+        "git clone https://github.com/boson-ai/higgs-audio.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+      ],
+      "linux": [
+        "git clone https://github.com/boson-ai/higgs-audio.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install --extra-index-url https://download.pytorch.org/whl/cu121 -r requirements.txt"
+      ],
+      "windows": [
+        "git clone https://github.com/boson-ai/higgs-audio.git $INSTALL_DIR",
+        "cd $INSTALL_DIR; python -m venv venv; .\\venv\\Scripts\\activate; pip install --extra-index-url https://download.pytorch.org/whl/cu121 -r requirements.txt"
+      ]
+    }
+  },
+  "launch": {
+    "macos":   "cd {install_dir} && source venv/bin/activate && python server.py --port {port}",
+    "linux":   "cd {install_dir} && source venv/bin/activate && python server.py --port {port}",
+    "windows": "cd {install_dir}; .\\venv\\Scripts\\activate; python server.py --port {port}"
+  },
+  "health": {
+    "path": "/health",
+    "expectedStatus": 200
+  }
+}

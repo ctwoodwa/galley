@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://galley.sunfishsoftware.com/schemas/plugin-manifest-v1.json",
+  "title": "Galley plugin manifest",
+  "description": "Describes a tool plugin galley can install or connect to. See docs/architecture/plugin-architecture.md.",
+  "type": "object",
+  "required": ["id", "name", "version", "kind", "capabilities", "repository", "description", "license", "hardware"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Stable slug. Matches the folder name under plugins/."
+    },
+    "name": { "type": "string" },
+    "version": {
+      "type": "string",
+      "description": "Galley-side manifest version, not upstream tool version."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["local", "cloud"]
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": ["tts/fast", "tts/quality", "stt/fast", "stt/quality", "image", "music", "llm", "embedding"]
+      }
+    },
+    "flavor": {
+      "type": "string",
+      "description": "API-shape hint consumed by galley clients (e.g. 'kokoro-local', 'openai-image')."
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical source repo or product page."
+    },
+    "readmeUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Direct user-facing docs link. Falls back to repository when absent."
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX identifier (e.g. 'Apache-2.0') or 'proprietary'."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 30,
+      "description": "Two to three sentences shown in the plugin picker."
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["support"],
+        "properties": {
+          "support": {
+            "type": "string",
+            "enum": ["best", "good", "ok", "partial", "unsupported"]
+          },
+          "accel": {
+            "type": "string",
+            "enum": ["cuda", "rocm", "mps", "cpu", "any"]
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Slot config defaults applied when this plugin is assigned to a capability slot.",
+      "properties": {
+        "port": { "type": "integer" },
+        "baseUrl": { "type": "string", "format": "uri" },
+        "model": { "type": "string" }
+      }
+    },
+    "install": {
+      "type": "object",
+      "description": "Required when kind=local. Per-OS install recipe.",
+      "properties": {
+        "prerequisites": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "steps": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "installDirDefault": {
+          "type": "string",
+          "description": "Default $INSTALL_DIR. Tokens: ${HOME}, ${USERPROFILE}, ${plugin_id}."
+        }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "description": "Required when kind=local. Per-OS shell command. {port}, {install_dir}, {model} are substituted.",
+      "additionalProperties": { "type": "string" }
+    },
+    "health": {
+      "type": "object",
+      "description": "Required when kind=local. Probe spec.",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "description": "Relative to baseUrl. E.g. '/health'." },
+        "expectedStatus": { "type": "integer", "default": 200 },
+        "method": { "type": "string", "enum": ["GET", "POST", "HEAD"], "default": "GET" }
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "description": "Required when kind=cloud. API base URL + version.",
+      "required": ["baseUrl"],
+      "properties": {
+        "baseUrl": { "type": "string", "format": "uri" },
+        "apiVersion": { "type": "string" },
+        "docsUrl": { "type": "string", "format": "uri" }
+      }
+    },
+    "authentication": {
+      "type": "object",
+      "description": "Required when kind=cloud. How requests are authenticated.",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["bearer", "api-key-header", "oauth", "query-param", "none"]
+        },
+        "header": { "type": "string", "description": "Header name (api-key-header / bearer)." },
+        "queryParam": { "type": "string", "description": "Query parameter name (query-param)." },
+        "apiKeyEnvVar": { "type": "string", "description": "Suggested env var name for the secret." },
+        "signupUrl": { "type": "string", "format": "uri" },
+        "consoleUrl": { "type": "string", "format": "uri" }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "description": "Recommended when kind=cloud.",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "model": {
+          "type": "string",
+          "enum": ["pay-per-token", "pay-per-image", "pay-per-second", "pay-per-call", "subscription", "free-tier", "free"]
+        },
+        "freeTier": { "type": "string" }
+      }
+    },
+    "terms": {
+      "type": "string",
+      "format": "uri",
+      "description": "Recommended when kind=cloud. Link to acceptable-use policy / ToS."
+    },
+    "probe": {
+      "type": "object",
+      "description": "Optional override for cloud probe behavior (e.g. canary endpoint, lighter than full requests).",
+      "properties": {
+        "path": { "type": "string" },
+        "method": { "type": "string", "enum": ["GET", "POST", "HEAD"] },
+        "expectedStatus": { "type": "integer" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "local" } } },
+      "then": { "required": ["install", "launch", "health", "defaults"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "cloud" } } },
+      "then": { "required": ["endpoint", "authentication"] }
+    }
+  ]
+}

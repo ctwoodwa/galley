@@ -1,0 +1,52 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "whisper-cpp",
+  "name": "whisper.cpp",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["stt/fast"],
+  "flavor": "standard",
+  "repository": "https://github.com/ggerganov/whisper.cpp",
+  "readmeUrl": "https://github.com/ggerganov/whisper.cpp#readme",
+  "license": "MIT",
+  "description": "C++ port of OpenAI Whisper. Tiny dependencies, CPU/Metal/CoreML/CUDA accel. Excellent default for fast transcription on any host.",
+  "hardware": {
+    "macos-arm64":           { "support": "best", "accel": "mps", "notes": "Metal + CoreML acceleration both available." },
+    "macos-x86_64":          { "support": "good", "accel": "cpu" },
+    "windows-x86_64-nvidia": { "support": "best", "accel": "cuda" },
+    "windows-x86_64":        { "support": "good", "accel": "cpu" },
+    "linux-x86_64-nvidia":   { "support": "best", "accel": "cuda" },
+    "linux-x86_64":          { "support": "good", "accel": "cpu" }
+  },
+  "defaults": {
+    "port": 8082,
+    "baseUrl": "http://localhost:8082"
+  },
+  "install": {
+    "prerequisites": ["git", "make", "c++17 compiler"],
+    "installDirDefault": "${HOME}/galley-tools/whisper-cpp",
+    "steps": {
+      "macos": [
+        "git clone https://github.com/ggerganov/whisper.cpp.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && make && bash ./models/download-ggml-model.sh base.en"
+      ],
+      "linux": [
+        "git clone https://github.com/ggerganov/whisper.cpp.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && make && bash ./models/download-ggml-model.sh base.en"
+      ],
+      "windows": [
+        "git clone https://github.com/ggerganov/whisper.cpp.git $INSTALL_DIR",
+        "cd $INSTALL_DIR; cmake -B build; cmake --build build --config Release; .\\models\\download-ggml-model.cmd base.en"
+      ]
+    }
+  },
+  "launch": {
+    "macos":   "cd {install_dir} && ./server --port {port} -m models/ggml-base.en.bin",
+    "linux":   "cd {install_dir} && ./server --port {port} -m models/ggml-base.en.bin",
+    "windows": "cd {install_dir}; .\\build\\bin\\Release\\server.exe --port {port} -m models\\ggml-base.en.bin"
+  },
+  "health": {
+    "path": "/",
+    "expectedStatus": 200
+  }
+}

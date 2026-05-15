@@ -1,0 +1,42 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "piper",
+  "name": "Piper",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["tts/fast"],
+  "flavor": "standard",
+  "repository": "https://github.com/rhasspy/piper",
+  "readmeUrl": "https://github.com/rhasspy/piper#readme",
+  "license": "MIT",
+  "description": "Lightweight, CPU-only TTS optimized for embedded devices. Lower quality than Kokoro but runs anywhere and is extremely fast.",
+  "hardware": {
+    "macos-arm64":           { "support": "good", "accel": "cpu" },
+    "macos-x86_64":          { "support": "good", "accel": "cpu" },
+    "windows-x86_64":        { "support": "good", "accel": "cpu" },
+    "linux-x86_64":          { "support": "good", "accel": "cpu" },
+    "linux-arm64":           { "support": "best", "accel": "cpu", "notes": "Originally targeted at Raspberry Pi." }
+  },
+  "defaults": {
+    "port": 5000,
+    "baseUrl": "http://localhost:5000"
+  },
+  "install": {
+    "prerequisites": ["python>=3.9", "git"],
+    "installDirDefault": "${HOME}/galley-tools/piper",
+    "steps": {
+      "macos":   ["pip install piper-tts piper-tts-server"],
+      "linux":   ["pip install piper-tts piper-tts-server"],
+      "windows": ["pip install piper-tts piper-tts-server"]
+    }
+  },
+  "launch": {
+    "macos":   "python -m piper.server --port {port}",
+    "linux":   "python -m piper.server --port {port}",
+    "windows": "python -m piper.server --port {port}"
+  },
+  "health": {
+    "path": "/health",
+    "expectedStatus": 200
+  }
+}

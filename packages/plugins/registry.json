@@ -1,0 +1,25 @@
+{
+  "$schema": "./manifest-schema.json",
+  "registryVersion": "1.0",
+  "generatedAt": "2026-05-15",
+  "description": "Galley tool-plugin registry. Each entry points at a manifest under plugins/<id>/manifest.json. See docs/architecture/plugin-architecture.md.",
+  "plugins": [
+    { "id": "kokoro-fastapi",        "kind": "local", "capabilities": ["tts/fast"],     "manifestPath": "plugins/kokoro-fastapi/manifest.json" },
+    { "id": "piper",                 "kind": "local", "capabilities": ["tts/fast"],     "manifestPath": "plugins/piper/manifest.json" },
+    { "id": "higgs-audio",           "kind": "local", "capabilities": ["tts/quality", "music"], "manifestPath": "plugins/higgs-audio/manifest.json" },
+    { "id": "whisper-cpp",           "kind": "local", "capabilities": ["stt/fast"],     "manifestPath": "plugins/whisper-cpp/manifest.json" },
+    { "id": "faster-whisper-large",  "kind": "local", "capabilities": ["stt/quality"],  "manifestPath": "plugins/faster-whisper-large/manifest.json" },
+    { "id": "comfyui",               "kind": "local", "capabilities": ["image"],        "manifestPath": "plugins/comfyui/manifest.json" },
+    { "id": "sdnext",                "kind": "local", "capabilities": ["image"],        "manifestPath": "plugins/sdnext/manifest.json" },
+    { "id": "fooocus",               "kind": "local", "capabilities": ["image"],        "manifestPath": "plugins/fooocus/manifest.json" },
+    { "id": "musicgen",              "kind": "local", "capabilities": ["music"],        "manifestPath": "plugins/musicgen/manifest.json" },
+    { "id": "openai-dalle3",         "kind": "cloud", "capabilities": ["image"],        "manifestPath": "plugins/openai-dalle3/manifest.json" },
+    { "id": "stability-ai",          "kind": "cloud", "capabilities": ["image"],        "manifestPath": "plugins/stability-ai/manifest.json" },
+    { "id": "flux-bfl",              "kind": "cloud", "capabilities": ["image"],        "manifestPath": "plugins/flux-bfl/manifest.json" },
+    { "id": "google-imagen",         "kind": "cloud", "capabilities": ["image"],        "manifestPath": "plugins/google-imagen/manifest.json" },
+    { "id": "replicate",             "kind": "cloud", "capabilities": ["image", "music"], "manifestPath": "plugins/replicate/manifest.json" },
+    { "id": "anthropic-claude",      "kind": "cloud", "capabilities": ["llm"],          "manifestPath": "plugins/anthropic-claude/manifest.json" },
+    { "id": "openai-gpt",            "kind": "cloud", "capabilities": ["llm"],          "manifestPath": "plugins/openai-gpt/manifest.json" },
+    { "id": "google-gemini",         "kind": "cloud", "capabilities": ["llm", "image"], "manifestPath": "plugins/google-gemini/manifest.json" }
+  ]
+}

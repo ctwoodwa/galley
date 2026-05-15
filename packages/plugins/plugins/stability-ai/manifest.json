@@ -1,0 +1,43 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "stability-ai",
+  "name": "Stability AI",
+  "version": "1.0",
+  "kind": "cloud",
+  "capabilities": ["image"],
+  "flavor": "stability",
+  "repository": "https://platform.stability.ai",
+  "readmeUrl": "https://platform.stability.ai/docs/getting-started",
+  "license": "proprietary",
+  "description": "Stable Diffusion 3 + Stable Image Core / Ultra hosted by Stability AI. Pay-per-image; good fit for users who want SD-family output without local GPU.",
+  "hardware": {
+    "any": { "support": "best", "accel": "any" }
+  },
+  "defaults": {
+    "baseUrl": "https://api.stability.ai",
+    "model": "stable-image-ultra"
+  },
+  "endpoint": {
+    "baseUrl": "https://api.stability.ai",
+    "apiVersion": "v2beta",
+    "docsUrl": "https://platform.stability.ai/docs/api-reference"
+  },
+  "authentication": {
+    "type": "bearer",
+    "header": "Authorization",
+    "apiKeyEnvVar": "STABILITY_API_KEY",
+    "signupUrl": "https://platform.stability.ai/account",
+    "consoleUrl": "https://platform.stability.ai/account/keys"
+  },
+  "pricing": {
+    "url": "https://platform.stability.ai/pricing",
+    "model": "pay-per-image",
+    "freeTier": "25 free credits on signup."
+  },
+  "terms": "https://stability.ai/terms-of-service",
+  "probe": {
+    "path": "/v1/user/account",
+    "method": "GET",
+    "expectedStatus": 200
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "sdnext",
+  "name": "SD.Next (vladmandic)",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["image"],
+  "flavor": "automatic1111",
+  "repository": "https://github.com/vladmandic/sdnext",
+  "readmeUrl": "https://github.com/vladmandic/sdnext#readme",
+  "license": "AGPL-3.0",
+  "description": "Productive fork of AUTOMATIC1111. Faster turnaround for non-graph workflows; broader model-format support (SD3, FLUX, etc.). Process-isolated from galley.",
+  "hardware": {
+    "macos-arm64":           { "support": "partial", "accel": "mps" },
+    "windows-x86_64-nvidia": { "support": "best", "accel": "cuda" },
+    "windows-x86_64":        { "support": "ok",   "accel": "cpu" },
+    "linux-x86_64-nvidia":   { "support": "best", "accel": "cuda" },
+    "linux-x86_64-amd":      { "support": "partial", "accel": "rocm" }
+  },
+  "defaults": {
+    "port": 7860,
+    "baseUrl": "http://localhost:7860"
+  },
+  "install": {
+    "prerequisites": ["python>=3.10", "git"],
+    "installDirDefault": "${HOME}/galley-tools/sdnext",
+    "steps": {
+      "macos":   ["git clone https://github.com/vladmandic/sdnext.git $INSTALL_DIR", "cd $INSTALL_DIR && ./webui.sh --use-zluda --skip-torch-cuda-test --port {port} --skip-launch"],
+      "linux":   ["git clone https://github.com/vladmandic/sdnext.git $INSTALL_DIR", "cd $INSTALL_DIR && ./webui.sh --port {port} --skip-launch"],
+      "windows": ["git clone https://github.com/vladmandic/sdnext.git $INSTALL_DIR", "cd $INSTALL_DIR; .\\webui.bat --port {port} --skip-launch"]
+    }
+  },
+  "launch": {
+    "macos":   "cd {install_dir} && ./webui.sh --listen --port {port} --api",
+    "linux":   "cd {install_dir} && ./webui.sh --listen --port {port} --api",
+    "windows": "cd {install_dir}; .\\webui.bat --listen --port {port} --api"
+  },
+  "health": {
+    "path": "/internal/ping",
+    "expectedStatus": 200
+  }
+}

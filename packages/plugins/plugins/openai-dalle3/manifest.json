@@ -1,0 +1,43 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "openai-dalle3",
+  "name": "OpenAI DALL·E 3 / gpt-image-1",
+  "version": "1.0",
+  "kind": "cloud",
+  "capabilities": ["image"],
+  "flavor": "openai-image",
+  "repository": "https://platform.openai.com/docs/api-reference/images",
+  "readmeUrl": "https://platform.openai.com/docs/guides/images",
+  "license": "proprietary",
+  "description": "OpenAI's hosted image generation. High-quality prompt adherence; image edits + variations supported. Pay-per-image.",
+  "hardware": {
+    "any": { "support": "best", "accel": "any", "notes": "Cloud API — local hardware doesn't matter." }
+  },
+  "defaults": {
+    "baseUrl": "https://api.openai.com",
+    "model": "gpt-image-1"
+  },
+  "endpoint": {
+    "baseUrl": "https://api.openai.com",
+    "apiVersion": "v1",
+    "docsUrl": "https://platform.openai.com/docs/api-reference/images/create"
+  },
+  "authentication": {
+    "type": "bearer",
+    "header": "Authorization",
+    "apiKeyEnvVar": "OPENAI_API_KEY",
+    "signupUrl": "https://platform.openai.com/signup",
+    "consoleUrl": "https://platform.openai.com/api-keys"
+  },
+  "pricing": {
+    "url": "https://openai.com/api/pricing",
+    "model": "pay-per-image",
+    "freeTier": "Free trial credits on new accounts; no ongoing free tier."
+  },
+  "terms": "https://openai.com/policies/terms-of-use",
+  "probe": {
+    "path": "/v1/models",
+    "method": "GET",
+    "expectedStatus": 200
+  }
+}

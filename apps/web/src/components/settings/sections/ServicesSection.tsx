@@ -48,6 +48,12 @@ const PROVIDER_OPTIONS_BY_CAPABILITY: Record<
     { value: 'musicgen', label: 'MusicGen' },
     { value: 'custom', label: 'Custom' },
   ],
+  llm: [
+    { value: 'anthropic-claude', label: 'Anthropic Claude' },
+    { value: 'openai-gpt', label: 'OpenAI GPT' },
+    { value: 'google-gemini', label: 'Google Gemini' },
+    { value: 'custom', label: 'Custom' },
+  ],
 }
 
 /**

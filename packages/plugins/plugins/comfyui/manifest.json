@@ -1,0 +1,51 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "comfyui",
+  "name": "ComfyUI",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["image"],
+  "flavor": "comfyui",
+  "repository": "https://github.com/comfyanonymous/ComfyUI",
+  "readmeUrl": "https://github.com/comfyanonymous/ComfyUI#readme",
+  "license": "GPL-3.0",
+  "description": "Graph-based diffusion UI with the deepest plugin ecosystem (custom nodes, workflows). GPU strongly recommended. Apple Silicon supported via MPS but slower than CUDA. Galley calls ComfyUI as a subprocess — GPL boundary preserved via process isolation.",
+  "hardware": {
+    "macos-arm64":           { "support": "ok",   "accel": "mps", "notes": "Works but slower than CUDA; some custom nodes are CUDA-only." },
+    "macos-x86_64":          { "support": "unsupported", "accel": "cpu" },
+    "windows-x86_64-nvidia": { "support": "best", "accel": "cuda" },
+    "linux-x86_64-nvidia":   { "support": "best", "accel": "cuda" },
+    "windows-x86_64":        { "support": "partial", "accel": "cpu", "notes": "Functional but order-of-magnitude slower." }
+  },
+  "defaults": {
+    "port": 8188,
+    "baseUrl": "http://localhost:8188"
+  },
+  "install": {
+    "prerequisites": ["python>=3.10", "git", "cuda-toolkit>=12.0 (windows/linux)"],
+    "installDirDefault": "${HOME}/galley-tools/ComfyUI",
+    "steps": {
+      "macos": [
+        "git clone https://github.com/comfyanonymous/ComfyUI.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+      ],
+      "linux": [
+        "git clone https://github.com/comfyanonymous/ComfyUI.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install --extra-index-url https://download.pytorch.org/whl/cu121 -r requirements.txt"
+      ],
+      "windows": [
+        "git clone https://github.com/comfyanonymous/ComfyUI.git $INSTALL_DIR",
+        "cd $INSTALL_DIR; python -m venv venv; .\\venv\\Scripts\\activate; pip install --extra-index-url https://download.pytorch.org/whl/cu121 -r requirements.txt"
+      ]
+    }
+  },
+  "launch": {
+    "macos":   "cd {install_dir} && source venv/bin/activate && python main.py --port {port}",
+    "linux":   "cd {install_dir} && source venv/bin/activate && python main.py --port {port}",
+    "windows": "cd {install_dir}; .\\venv\\Scripts\\activate; python main.py --port {port}"
+  },
+  "health": {
+    "path": "/",
+    "expectedStatus": 200
+  }
+}

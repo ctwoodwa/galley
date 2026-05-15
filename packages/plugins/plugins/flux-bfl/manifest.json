@@ -1,0 +1,43 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "flux-bfl",
+  "name": "Black Forest Labs FLUX",
+  "version": "1.0",
+  "kind": "cloud",
+  "capabilities": ["image"],
+  "flavor": "flux",
+  "repository": "https://blackforestlabs.ai",
+  "readmeUrl": "https://docs.bfl.ml/",
+  "license": "proprietary",
+  "description": "Hosted FLUX.1 (pro, dev, schnell) from Black Forest Labs. Strong photorealism + prompt adherence. Same model family as the popular open-weight FLUX.1-schnell on Hugging Face.",
+  "hardware": {
+    "any": { "support": "best", "accel": "any" }
+  },
+  "defaults": {
+    "baseUrl": "https://api.bfl.ml",
+    "model": "flux-pro-1.1"
+  },
+  "endpoint": {
+    "baseUrl": "https://api.bfl.ml",
+    "apiVersion": "v1",
+    "docsUrl": "https://docs.bfl.ml/api-reference"
+  },
+  "authentication": {
+    "type": "api-key-header",
+    "header": "x-key",
+    "apiKeyEnvVar": "BFL_API_KEY",
+    "signupUrl": "https://api.bfl.ml/auth/profile",
+    "consoleUrl": "https://api.bfl.ml/auth/profile"
+  },
+  "pricing": {
+    "url": "https://docs.bfl.ml/pricing",
+    "model": "pay-per-image",
+    "freeTier": "Trial credits on signup."
+  },
+  "terms": "https://blackforestlabs.ai/terms-and-conditions/",
+  "probe": {
+    "path": "/v1/get_result?id=ping",
+    "method": "GET",
+    "expectedStatus": 404
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "musicgen",
+  "name": "MusicGen",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["music"],
+  "flavor": "standard",
+  "repository": "https://github.com/facebookresearch/audiocraft",
+  "readmeUrl": "https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md",
+  "license": "CC-BY-NC-4.0",
+  "description": "Meta's MusicGen model wrapped as a local HTTP service. Generates short music clips from text prompts. CC-BY-NC: non-commercial use only — read the license before deploying for paid work.",
+  "hardware": {
+    "macos-arm64":           { "support": "partial", "accel": "mps", "notes": "Generation slow on Mac; OK for cue-finding." },
+    "windows-x86_64-nvidia": { "support": "best", "accel": "cuda" },
+    "linux-x86_64-nvidia":   { "support": "best", "accel": "cuda" }
+  },
+  "defaults": {
+    "port": 8765,
+    "baseUrl": "http://localhost:8765",
+    "model": "musicgen-medium"
+  },
+  "install": {
+    "prerequisites": ["python>=3.10", "git", "ffmpeg"],
+    "installDirDefault": "${HOME}/galley-tools/audiocraft",
+    "steps": {
+      "macos": [
+        "git clone https://github.com/facebookresearch/audiocraft.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install -e ."
+      ],
+      "linux": [
+        "git clone https://github.com/facebookresearch/audiocraft.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install --extra-index-url https://download.pytorch.org/whl/cu121 -e ."
+      ],
+      "windows": [
+        "git clone https://github.com/facebookresearch/audiocraft.git $INSTALL_DIR",
+        "cd $INSTALL_DIR; python -m venv venv; .\\venv\\Scripts\\activate; pip install --extra-index-url https://download.pytorch.org/whl/cu121 -e ."
+      ]
+    }
+  },
+  "launch": {
+    "macos":   "cd {install_dir} && source venv/bin/activate && python -m galley_music_server --port {port} --model {model}",
+    "linux":   "cd {install_dir} && source venv/bin/activate && python -m galley_music_server --port {port} --model {model}",
+    "windows": "cd {install_dir}; .\\venv\\Scripts\\activate; python -m galley_music_server --port {port} --model {model}"
+  },
+  "health": {
+    "path": "/health",
+    "expectedStatus": 200
+  }
+}

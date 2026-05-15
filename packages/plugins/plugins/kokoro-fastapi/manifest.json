@@ -1,0 +1,52 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "kokoro-fastapi",
+  "name": "Kokoro-FastAPI",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["tts/fast"],
+  "flavor": "kokoro-local",
+  "repository": "https://github.com/remsky/Kokoro-FastAPI",
+  "readmeUrl": "https://github.com/remsky/Kokoro-FastAPI#readme",
+  "license": "Apache-2.0",
+  "description": "Local OpenAI-compatible Kokoro TTS server. Fast on CPU, faster with CUDA / Metal. Good default for everyday narration drafts.",
+  "hardware": {
+    "macos-arm64":           { "support": "good", "accel": "mps" },
+    "macos-x86_64":          { "support": "ok",   "accel": "cpu" },
+    "windows-x86_64-nvidia": { "support": "best", "accel": "cuda" },
+    "windows-x86_64":        { "support": "ok",   "accel": "cpu" },
+    "linux-x86_64-nvidia":   { "support": "best", "accel": "cuda" }
+  },
+  "defaults": {
+    "port": 8880,
+    "baseUrl": "http://localhost:8880"
+  },
+  "install": {
+    "prerequisites": ["python>=3.10", "git", "ffmpeg"],
+    "installDirDefault": "${HOME}/galley-tools/kokoro-fastapi",
+    "steps": {
+      "macos": [
+        "git clone https://github.com/remsky/Kokoro-FastAPI.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+      ],
+      "linux": [
+        "git clone https://github.com/remsky/Kokoro-FastAPI.git $INSTALL_DIR",
+        "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
+      ],
+      "windows": [
+        "git clone https://github.com/remsky/Kokoro-FastAPI.git $INSTALL_DIR",
+        "cd $INSTALL_DIR; python -m venv venv; .\\venv\\Scripts\\activate; pip install -r requirements.txt"
+      ]
+    }
+  },
+  "launch": {
+    "macos":   "cd {install_dir} && source venv/bin/activate && python main.py --port {port}",
+    "linux":   "cd {install_dir} && source venv/bin/activate && python main.py --port {port}",
+    "windows": "cd {install_dir}; .\\venv\\Scripts\\activate; python main.py --port {port}"
+  },
+  "health": {
+    "path": "/health",
+    "expectedStatus": 200,
+    "method": "GET"
+  }
+}

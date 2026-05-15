@@ -1,0 +1,43 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "google-gemini",
+  "name": "Google Gemini",
+  "version": "1.0",
+  "kind": "cloud",
+  "capabilities": ["llm", "image"],
+  "flavor": "google-genai",
+  "repository": "https://ai.google.dev",
+  "readmeUrl": "https://ai.google.dev/gemini-api/docs",
+  "license": "proprietary",
+  "description": "Gemini API. Multimodal — text generation, image understanding, and (via the Imagen sub-endpoint) image generation in one plugin. Generous free tier through AI Studio for non-production use.",
+  "hardware": {
+    "any": { "support": "best", "accel": "any" }
+  },
+  "defaults": {
+    "baseUrl": "https://generativelanguage.googleapis.com",
+    "model": "gemini-2.0-flash"
+  },
+  "endpoint": {
+    "baseUrl": "https://generativelanguage.googleapis.com",
+    "apiVersion": "v1beta",
+    "docsUrl": "https://ai.google.dev/gemini-api/docs/text-generation"
+  },
+  "authentication": {
+    "type": "query-param",
+    "queryParam": "key",
+    "apiKeyEnvVar": "GOOGLE_AI_API_KEY",
+    "signupUrl": "https://aistudio.google.com/",
+    "consoleUrl": "https://aistudio.google.com/app/apikey"
+  },
+  "pricing": {
+    "url": "https://ai.google.dev/pricing",
+    "model": "pay-per-token",
+    "freeTier": "Free tier with daily request and TPM limits via AI Studio."
+  },
+  "terms": "https://ai.google.dev/gemini-api/terms",
+  "probe": {
+    "path": "/v1beta/models",
+    "method": "GET",
+    "expectedStatus": 200
+  }
+}

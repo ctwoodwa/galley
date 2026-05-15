@@ -1,0 +1,51 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "faster-whisper-large",
+  "name": "faster-whisper (large-v3)",
+  "version": "1.0",
+  "kind": "local",
+  "capabilities": ["stt/quality"],
+  "flavor": "standard",
+  "repository": "https://github.com/SYSTRAN/faster-whisper",
+  "readmeUrl": "https://github.com/SYSTRAN/faster-whisper#readme",
+  "license": "MIT",
+  "description": "CTranslate2-based Whisper reimplementation. Largest Whisper model (large-v3) for best transcription quality. GPU strongly recommended for real-time use.",
+  "hardware": {
+    "macos-arm64":           { "support": "ok",   "accel": "cpu",  "notes": "Works on Apple Silicon CPU; MPS not yet supported by CTranslate2." },
+    "windows-x86_64-nvidia": { "support": "best", "accel": "cuda" },
+    "linux-x86_64-nvidia":   { "support": "best", "accel": "cuda" },
+    "windows-x86_64":        { "support": "partial", "accel": "cpu", "notes": "CPU-only large-v3 is slow." }
+  },
+  "defaults": {
+    "port": 9000,
+    "baseUrl": "http://localhost:9000",
+    "model": "large-v3"
+  },
+  "install": {
+    "prerequisites": ["python>=3.9", "git", "ffmpeg"],
+    "installDirDefault": "${HOME}/galley-tools/faster-whisper",
+    "steps": {
+      "macos": [
+        "python3 -m venv $INSTALL_DIR/venv",
+        "$INSTALL_DIR/venv/bin/pip install faster-whisper fastapi uvicorn"
+      ],
+      "linux": [
+        "python3 -m venv $INSTALL_DIR/venv",
+        "$INSTALL_DIR/venv/bin/pip install faster-whisper fastapi uvicorn"
+      ],
+      "windows": [
+        "python -m venv $INSTALL_DIR\\venv",
+        "$INSTALL_DIR\\venv\\Scripts\\pip install faster-whisper fastapi uvicorn"
+      ]
+    }
+  },
+  "launch": {
+    "macos":   "{install_dir}/venv/bin/python -m galley_stt_server --port {port} --model {model}",
+    "linux":   "{install_dir}/venv/bin/python -m galley_stt_server --port {port} --model {model}",
+    "windows": "{install_dir}\\venv\\Scripts\\python -m galley_stt_server --port {port} --model {model}"
+  },
+  "health": {
+    "path": "/health",
+    "expectedStatus": 200
+  }
+}

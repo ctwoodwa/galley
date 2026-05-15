@@ -17,8 +17,12 @@ export type CapabilityId =
   | 'stt/quality'
   | 'image'
   | 'music'
+  | 'llm'
 
-/** Every capability identifier galley currently models. */
+/** Every capability identifier galley currently models. `llm` was
+ *  added when cloud plugins for Anthropic / OpenAI / Google Gemini
+ *  landed in the plugin registry — used by editorial agents
+ *  (voice-pass, prose-review summarization, co-editor automation). */
 export const CAPABILITIES: readonly CapabilityId[] = [
   'tts/fast',
   'tts/quality',
@@ -26,6 +30,7 @@ export const CAPABILITIES: readonly CapabilityId[] = [
   'stt/quality',
   'image',
   'music',
+  'llm',
 ] as const
 
 export interface ServiceConfig {
@@ -100,6 +105,7 @@ export function defaultServicesConfig(): ServicesConfig {
     'stt/quality': { ...empty, flavor: 'standard' },
     image: { ...empty },
     music: { ...empty },
+    llm: { ...empty },
   }
 }
 

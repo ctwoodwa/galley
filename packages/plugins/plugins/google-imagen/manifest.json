@@ -1,0 +1,43 @@
+{
+  "$schema": "../../manifest-schema.json",
+  "id": "google-imagen",
+  "name": "Google Imagen (via Gemini API)",
+  "version": "1.0",
+  "kind": "cloud",
+  "capabilities": ["image"],
+  "flavor": "google-genai",
+  "repository": "https://ai.google.dev/gemini-api/docs/imagen",
+  "readmeUrl": "https://ai.google.dev/gemini-api/docs/imagen",
+  "license": "proprietary",
+  "description": "Google Imagen 3 + Imagen 4 served through the Gemini API (generativelanguage.googleapis.com). Pay-per-image; supports text-to-image and image editing.",
+  "hardware": {
+    "any": { "support": "best", "accel": "any" }
+  },
+  "defaults": {
+    "baseUrl": "https://generativelanguage.googleapis.com",
+    "model": "imagen-3.0-generate-002"
+  },
+  "endpoint": {
+    "baseUrl": "https://generativelanguage.googleapis.com",
+    "apiVersion": "v1beta",
+    "docsUrl": "https://ai.google.dev/gemini-api/docs/imagen"
+  },
+  "authentication": {
+    "type": "query-param",
+    "queryParam": "key",
+    "apiKeyEnvVar": "GOOGLE_AI_API_KEY",
+    "signupUrl": "https://aistudio.google.com/",
+    "consoleUrl": "https://aistudio.google.com/app/apikey"
+  },
+  "pricing": {
+    "url": "https://ai.google.dev/pricing",
+    "model": "pay-per-image",
+    "freeTier": "Free tier with rate limits via AI Studio."
+  },
+  "terms": "https://ai.google.dev/gemini-api/terms",
+  "probe": {
+    "path": "/v1beta/models",
+    "method": "GET",
+    "expectedStatus": 200
+  }
+}
