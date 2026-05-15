@@ -112,25 +112,39 @@ export const useApiConfig = create<ApiConfigState>()(
     }),
     {
       name: 'galley.api-config',
-      version: 3,
+      version: 4,
       migrate: (persistedState: unknown, version: number): ApiConfigState => {
         const state = (persistedState ?? {}) as Partial<ApiConfigState>
+        let services = state.services
         if (version < 3) {
-          return {
-            ...state,
-            baseUrl: state.baseUrl ?? DEFAULT_BASE_URL,
-            apiKey: state.apiKey ?? DEFAULT_API_KEY,
-            ttsSource: state.ttsSource ?? 'remote',
-            kokoroLocalUrl: state.kokoroLocalUrl ?? DEFAULT_KOKORO_LOCAL_URL,
-            services: migrateLegacyToServices({
-              baseUrl: state.baseUrl,
-              apiKey: state.apiKey,
-              ttsSource: state.ttsSource,
-              kokoroLocalUrl: state.kokoroLocalUrl,
-            }),
-          } as ApiConfigState
+          // v2 → v3: build the services map from the legacy flat fields.
+          services = migrateLegacyToServices({
+            baseUrl: state.baseUrl,
+            apiKey: state.apiKey,
+            ttsSource: state.ttsSource,
+            kokoroLocalUrl: state.kokoroLocalUrl,
+          })
         }
-        return state as ApiConfigState
+        if (version < 4 && services) {
+          // v3 → v4: ServiceConfig gained an optional `localCommand`.
+          // Older snapshots just lack the field — fill with empty
+          // strings so the UI's TextField stays controlled. The slot
+          // remains probe-only until the user sets a command.
+          services = Object.fromEntries(
+            Object.entries(services).map(([k, cfg]) => [
+              k,
+              { ...cfg, localCommand: cfg.localCommand ?? '' },
+            ]),
+          ) as typeof services
+        }
+        return {
+          ...state,
+          baseUrl: state.baseUrl ?? DEFAULT_BASE_URL,
+          apiKey: state.apiKey ?? DEFAULT_API_KEY,
+          ttsSource: state.ttsSource ?? 'remote',
+          kokoroLocalUrl: state.kokoroLocalUrl ?? DEFAULT_KOKORO_LOCAL_URL,
+          services: services ?? initialServices(),
+        } as ApiConfigState
       },
     },
   ),

@@ -44,6 +44,22 @@ export interface ServiceConfig {
    * shape; `'kokoro-local'` = Kokoro-FastAPI's OpenAI-compatible shape.
    */
   flavor?: string
+  /**
+   * Optional shell command that launches this worker on the current
+   * machine. When present, the galley desktop tray exposes Start /
+   * Stop / Restart for this slot. When absent or empty, the slot is
+   * probe-only (worker lives on a different host).
+   *
+   * Examples:
+   *   "cd ~/Projects/Kokoro-FastAPI && ./start-cpu.sh"
+   *   "cd C:\\tools\\higgs-audio && python -m higgs_audio.server --port 8881"
+   *   "docker compose -f /opt/comfyui/docker-compose.yml up"
+   *
+   * The command runs through the user's default shell (`bash -lc` on
+   * Mac/Linux, `cmd /c` on Windows) so PATH and shell aliases work
+   * the same as if the user typed it.
+   */
+  localCommand?: string
 }
 
 export type ServicesConfig = Record<CapabilityId, ServiceConfig>

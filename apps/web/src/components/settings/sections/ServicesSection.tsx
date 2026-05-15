@@ -224,6 +224,14 @@ function ServiceSlotCard({ numeral, capability, slot, onChange }: ServiceSlotCar
           placeholder="standard"
           helperText="API-shape hint for clients adapting to non-canonical upstream APIs. Set to 'kokoro-local' for Kokoro-FastAPI; leave empty otherwise."
         />
+        <TextField
+          label="Local launch command"
+          value={slot.localCommand ?? ''}
+          onChange={(localCommand) => onChange({ localCommand })}
+          placeholder="cd ~/Projects/Kokoro-FastAPI && ./start-cpu.sh"
+          helperText="When this worker runs on this machine, the galley desktop tray uses this to Start / Stop / Restart it. Leave empty for remote workers (probe-only). Runs through your default shell."
+          showOptional
+        />
       </AdvancedDisclosure>
     </EntryCard>
   )
