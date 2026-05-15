@@ -215,5 +215,11 @@ export function migrateLegacyToServices(legacy: {
       enabled: Boolean(baseUrl),
       provider: baseUrl ? 'inference-server' : '',
     },
+    llm: {
+      baseUrl: '',
+      apiKey: '',
+      enabled: false,
+      provider: '',
+    },
   }
 }
