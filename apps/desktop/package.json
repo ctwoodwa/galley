@@ -1,0 +1,14 @@
+{
+  "name": "@galley/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Galley desktop shell — Tauri 2.x app with tray + service supervision.",
+  "scripts": {
+    "dev": "cargo tauri dev",
+    "build": "cargo tauri build",
+    "icon": "cargo tauri icon"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

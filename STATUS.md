@@ -28,6 +28,7 @@ medium with the same internal pattern:
 | `prose/` | Phase 0–6 + 6.5 + 6.6 + 8 complete. All 42 handcount stdlib detectors migrated to galley/prose registry. `prose init` scaffolds yaml; `prose measure --stdout` pipes JSON for agent use. 78 detectors in `dispatch.run_registry`. 285 tests green. See `prose/ROADMAP.md`. |
 | `apps/mcp/` | MCP server (`galley-mcp`) exposes 8 tools to Claude Desktop / Claude Code / third-party AI agents: chapter measurement, terse verdicts, book introspection, overlay r/w, profile inspection, detector enumeration. 14 tool-level tests. Install via `pip install -e apps/mcp` then wire `command: galley-mcp` into `claude_desktop_config.json` or `.mcp.json`. |
 | `services/book-server` | HTTP `POST /api/books/:bookId/measure?chapter=<path>` triggers measurement and returns the same JSON shape MCP+CLI return. Auto-scaffolds `book.editorial.yaml` on Add-Book. |
+| `apps/desktop/` | **Scaffolded — awaits first compile.** Tauri 2.x cross-platform shell (Mac `.app` / Win `.msi`) with tray menu (Open / Books+Add / Tools+Measure / Services+Restart / Settings / Quit), book-server child-process supervision, 30s worker-slot probes. Loads `apps/web` in a single main window; tray navigation flows via Tauri events into react-router (no `eval`). README documents Rust toolchain install + dev/build + unsigned-Mac workaround. |
 | `speech/` | Reserved. TTS/STT-driven editing. |
 | `comics/` | Reserved. |
 | `video/` | Reserved. |

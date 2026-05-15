@@ -1,0 +1,9 @@
+# Tauri build outputs
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Generated bundle resources
+src-tauri/gen/
+
+# Node
+node_modules/
