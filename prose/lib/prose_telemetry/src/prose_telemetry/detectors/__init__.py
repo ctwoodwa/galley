@@ -33,3 +33,4 @@ from prose_telemetry.detectors import sonics  # noqa: F401
 from prose_telemetry.detectors import voice  # noqa: F401
 from prose_telemetry.detectors import integrations  # noqa: F401
 from prose_telemetry.detectors import spacy  # noqa: F401  spaCy-tier wrappers
+from prose_telemetry.detectors import classical_rhetoric  # noqa: F401  Phase 8 batch 1

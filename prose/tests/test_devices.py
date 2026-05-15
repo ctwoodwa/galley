@@ -12,7 +12,14 @@ from prose_telemetry._common import discover, get
 from prose_telemetry._common.types import DetectorConfig
 
 
-EXPECTED_DETECTORS = {
+# The Phase 5/6 mid-complexity device pack — pinned by name + catalog
+# id. Detectors added in later phases (Phase 8 batch 1 added the
+# classical-rhetoric pack: anaphora / asyndeton / polysyndeton /
+# literal_tricolon) also register as family='literary_device',
+# tier='stdlib' but live in different sub-packages and don't carry the
+# literary-devices catalog ID, so the assertions below scope to this
+# specific pack.
+PHASE_5_6_DEVICES = {
     "antimetabole",
     "climax",
     "concession",
@@ -31,13 +38,15 @@ EXPECTED_DETECTORS = {
 # ─── Registration ──────────────────────────────────────────────────────────
 
 
-def test_all_nine_devices_register():
+def test_phase_5_6_devices_register():
     names = {e.name for e in discover(family="literary_device") if e.tier == "stdlib"}
-    assert names == EXPECTED_DETECTORS
+    # Subset, not equality — later phases (8+) add stdlib literary_device
+    # detectors in other sub-packages.
+    assert PHASE_5_6_DEVICES <= names
 
 
-def test_each_device_carries_catalog_id():
-    for name in EXPECTED_DETECTORS:
+def test_each_phase_5_6_device_carries_catalog_id():
+    for name in PHASE_5_6_DEVICES:
         entry = get(name)
         assert entry is not None
         assert "catalog_id" in entry.metadata
@@ -303,7 +312,7 @@ def test_climax_quiet_on_descending_list():
 
 
 def test_devices_safe_on_empty_input():
-    for name in EXPECTED_DETECTORS:
+    for name in PHASE_5_6_DEVICES:
         entry = get(name)
         assert entry.fn("", config=DetectorConfig()) == []
         assert entry.fn("   \n\n  ", config=DetectorConfig()) == []
@@ -314,7 +323,7 @@ def test_devices_disabled_config_returns_empty():
         "By 'local-first' we mean a system where the device holds. "
         "Yes, that costs — and that is precisely why it matters."
     )
-    for name in EXPECTED_DETECTORS:
+    for name in PHASE_5_6_DEVICES:
         entry = get(name)
         findings = entry.fn(text, config=DetectorConfig(enabled=False))
         assert findings == []
