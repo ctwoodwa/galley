@@ -126,18 +126,103 @@
     },
     "authentication": {
       "type": "object",
-      "description": "Required when kind=cloud. How requests are authenticated.",
+      "description": "Required when kind=cloud. How requests are authenticated. Galley supports static secret flows (bearer / api-key / query-param) and interactive flows (OAuth 2.0 / OIDC, including providers like Okta, Auth0, Google, Microsoft Entra, GitHub). Interactive flows handle provider-enforced 2FA implicitly — galley waits for the IdP to complete its challenge.",
       "required": ["type"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["bearer", "api-key-header", "oauth", "query-param", "none"]
+          "enum": ["bearer", "api-key-header", "oauth2", "oidc", "query-param", "mtls", "none", "oauth"],
+          "description": "Auth scheme. `oauth` is retained as a deprecated alias for `oauth2`."
         },
         "header": { "type": "string", "description": "Header name (api-key-header / bearer)." },
         "queryParam": { "type": "string", "description": "Query parameter name (query-param)." },
         "apiKeyEnvVar": { "type": "string", "description": "Suggested env var name for the secret." },
         "signupUrl": { "type": "string", "format": "uri" },
-        "consoleUrl": { "type": "string", "format": "uri" }
+        "consoleUrl": { "type": "string", "format": "uri" },
+        "oauth": {
+          "type": "object",
+          "description": "Required when type=oauth2 or type=oidc. Declares the provider's OAuth surface so galley can run the flow without per-provider code.",
+          "required": ["flow"],
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": ["okta", "auth0", "google", "microsoft-entra", "github", "gitlab", "custom"],
+              "description": "Informational provider tag. Drives default UX hints (e.g., Okta tenant URL prompt) but galley never hard-codes provider behavior — all routing keys come from this manifest."
+            },
+            "flow": {
+              "type": "string",
+              "enum": ["authorization-code-pkce", "device-code", "client-credentials"],
+              "description": "Recommended: `authorization-code-pkce` for desktop apps with a logged-in user, `device-code` for headless / TV-style flows, `client-credentials` for service accounts."
+            },
+            "authorizationEndpoint": { "type": "string", "format": "uri" },
+            "tokenEndpoint": { "type": "string", "format": "uri" },
+            "deviceAuthorizationEndpoint": {
+              "type": "string",
+              "format": "uri",
+              "description": "Required when flow=device-code."
+            },
+            "issuer": {
+              "type": "string",
+              "format": "uri",
+              "description": "OIDC issuer URL. When present, galley can discover endpoints via `<issuer>/.well-known/openid-configuration` instead of relying on the manifest's explicit endpoints."
+            },
+            "scopes": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Scopes galley requests by default. The user may extend in Settings → Services."
+            },
+            "clientIdEnvVar": {
+              "type": "string",
+              "description": "Suggested env var that supplies the OAuth client_id. Required when the manifest does not ship a public client_id."
+            },
+            "publicClientId": {
+              "type": "string",
+              "description": "OAuth public client_id baked into the manifest. Only set this for providers that explicitly support public (no-secret) desktop clients with PKCE."
+            },
+            "redirectUri": {
+              "type": "string",
+              "description": "Redirect URI registered with the provider. Defaults to `http://127.0.0.1:<port>/oauth/callback` (galley picks the port at runtime for loopback-redirect)."
+            },
+            "tokenStorage": {
+              "type": "string",
+              "enum": ["keychain", "memory"],
+              "default": "keychain",
+              "description": "Where the access + refresh tokens land. `keychain` uses Mac Keychain / Windows Credential Manager / libsecret. `memory` is for ephemeral sessions only."
+            },
+            "refresh": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether the manifest declares the provider supports refresh tokens. When false, galley re-runs the flow on expiry instead of attempting refresh."
+            }
+          }
+        },
+        "mfa": {
+          "type": "object",
+          "description": "Informational MFA / 2FA expectations for the provider. Galley does not implement second factors itself — for OAuth flows the IdP handles MFA in the browser/device step; for API-key flows the user enforces MFA at the provider before minting the key. This block lets galley surface clear UX (\"Okta will prompt for your second factor\"). Without this block, galley assumes MFA is unenforced.",
+          "properties": {
+            "providerEnforced": {
+              "type": "boolean",
+              "description": "True if the provider enforces a second factor during interactive sign-in. Set this for Okta, Microsoft Entra, Google Workspace, etc. when the deployment has MFA policy on."
+            },
+            "factors": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["totp", "webauthn", "push", "sms", "voice", "hardware-key", "email-otp", "passkey"]
+              },
+              "description": "Second-factor types the provider supports. Used only for UX hints; the actual factor is negotiated between the user's browser and the IdP."
+            },
+            "note": {
+              "type": "string",
+              "description": "Free-text guidance for the user (\"Your admin may require Okta Verify push on first sign-in\")."
+            },
+            "stepUpScopes": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Scopes (or `acr_values`) that trigger step-up authentication. When galley requests one of these, the IdP re-challenges for MFA even if the session is already authenticated."
+            }
+          }
+        }
       }
     },
     "pricing": {

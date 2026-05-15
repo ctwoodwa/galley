@@ -69,9 +69,12 @@ A subprocess running on the same host as galley. Manifest carries:
 A remote API the user authenticates against. Manifest carries:
 
 - `endpoint` — base URL, default API version, doc link.
-- `authentication` — `bearer` / `api-key-header` / `oauth` /
-  `query-param`; declares which header name + which env var or
-  keychain key holds the secret.
+- `authentication` — `bearer` / `api-key-header` / `query-param` /
+  `oauth2` / `oidc` / `mtls`; declares which header name + which env
+  var or keychain key holds the secret, and (for OAuth/OIDC) the
+  flow type, endpoints, scopes, and `mfa` block describing
+  provider-enforced second factors. See the *Authentication & 2FA*
+  section below.
 - `pricing` — link to upstream pricing page + a coarse model
   (`pay-per-token` / `pay-per-image` / `subscription` / `free-tier`).
 - `terms` — link to acceptable-use policy. Cloud plugins surface this
@@ -212,17 +215,87 @@ assignments that referenced the uninstalled plugin clear to `null`
 
 1. User picks a cloud plugin from `/settings/plugins`, clicks
    `Configure`.
-2. Galley walks the auth flow per the manifest's `authentication`:
-   - `api-key-header` / `bearer`: text field for the secret, stored
-     in the OS keychain (Mac Keychain, Windows Credential Manager,
-     libsecret on Linux). The slot config's `apiKey` field stores a
-     *reference* to the keychain entry, not the secret itself.
-   - `oauth`: opens the provider's auth page in a browser; callback
-     resolves to a token.
+2. Galley walks the auth flow per the manifest's `authentication`.
+   The supported schemes are summarised below; see the *Authentication
+   & 2FA* section for the full contract.
 3. Slot config absorbs the plugin's defaults: `baseUrl`, `flavor`,
    etc.
 4. Reachability check fires a thin canary against the configured
    endpoint to surface auth errors immediately.
+
+## Authentication & 2FA
+
+Galley supports the auth schemes a self-hosted editorial app
+realistically meets — static secrets for vendor APIs, OAuth 2.0 /
+OIDC for enterprise-IdP-fronted services (Okta, Microsoft Entra,
+Google Workspace, Auth0, GitHub, GitLab), and mTLS as a deferred
+slot for tenants who need it. Two-factor authentication is **always
+honored** but never implemented inside galley — it lives at the
+provider, either at API-key mint time (static flows) or during the
+interactive browser/device step (OAuth/OIDC).
+
+### Supported schemes
+
+| Scheme | When to use | How galley handles it | 2FA story |
+|---|---|---|---|
+| `api-key-header` / `bearer` | Vendor APIs that issue long-lived keys (Anthropic, OpenAI, Stability, etc.). | Secret stored in OS keychain; slot config persists only the keychain reference. | User enforces MFA at the provider's console *before* minting the key. Galley does not see the second factor. |
+| `query-param` | Legacy APIs that require the key as a URL parameter. | Same keychain storage; galley appends the param on every request. | Same as bearer / api-key. |
+| `oauth2` | Cloud APIs gated by OAuth 2.0 (Google Workspace, Microsoft Graph, GitHub Apps, custom Okta integrations). | Galley runs the flow declared in the manifest's `authentication.oauth.flow` — `authorization-code-pkce` (default, for desktop), `device-code` (headless), or `client-credentials` (service accounts). Access + refresh tokens land in the OS keychain. | Provider-enforced. The IdP's own MFA challenge fires inside the browser / device step; galley simply waits for the redirect or device confirmation. |
+| `oidc` | Identity providers that issue ID tokens in addition to access tokens (Okta OIDC apps, Entra, Auth0). | Same as `oauth2` plus ID-token verification + optional `userinfo` lookup. Issuer URL enables `.well-known/openid-configuration` discovery. | Same as oauth2. The manifest's `mfa.stepUpScopes` can request re-challenge on sensitive scopes (e.g., `acr_values=urn:okta:loa:2fa:any`). |
+| `mtls` | Reserved. For on-premise services that pin a client cert per device. | Reserved — design lands when a concrete need surfaces. Slot remains unconfigurable until then. | n/a — the cert is the credential. |
+| `none` | Anonymous / open endpoints. | No auth applied. | n/a |
+
+### OAuth manifest fields (cloud plugins)
+
+The `authentication.oauth` block carries everything galley needs to
+run an interactive flow without per-provider code:
+
+| Field | Purpose |
+|---|---|
+| `provider` | Informational tag (`okta`, `auth0`, `google`, `microsoft-entra`, `github`, `gitlab`, `custom`). Drives small UX hints — e.g., for `okta` the configure dialog asks for the tenant URL first. Galley never branches behavior on this. |
+| `flow` | `authorization-code-pkce` for desktop apps, `device-code` for headless (e.g., remote SSH session), `client-credentials` for service accounts. |
+| `authorizationEndpoint` / `tokenEndpoint` | Explicit endpoints. Optional if `issuer` is set and OIDC discovery is enabled. |
+| `deviceAuthorizationEndpoint` | Required for `device-code`. |
+| `issuer` | OIDC issuer URL; enables endpoint discovery via `.well-known/openid-configuration`. |
+| `scopes` | Default scopes galley requests. User can extend in Settings. |
+| `clientIdEnvVar` / `publicClientId` | Source of the OAuth client_id. Public PKCE clients can ship the id in the manifest; enterprise integrations (Okta org-specific) read from an env var the IT admin populates. |
+| `redirectUri` | Defaults to a loopback `http://127.0.0.1:<port>/oauth/callback` with a port galley picks at runtime. Override only when the provider requires a specific registered URI. |
+| `tokenStorage` | `keychain` (default) or `memory` (ephemeral). |
+| `refresh` | Whether the manifest declares refresh tokens are supported. |
+
+### MFA manifest fields
+
+The `authentication.mfa` block is informational — galley doesn't
+implement second factors, but surfacing the expectation in the UI
+prevents "why is it hanging" confusion:
+
+| Field | Purpose |
+|---|---|
+| `providerEnforced` | True if the IdP enforces a second factor at sign-in. |
+| `factors` | The factor types the provider supports (`totp`, `webauthn`, `push`, `passkey`, etc.). |
+| `note` | Free-text guidance ("Okta Verify push on first sign-in"). |
+| `stepUpScopes` | Scopes that trigger step-up auth (forces re-MFA on sensitive operations). |
+
+### Concrete provider notes
+
+- **Okta** — OIDC. Manifest pattern: `provider: okta`, `flow:
+  authorization-code-pkce`, `issuer: https://<tenant>.okta.com/oauth2/default`,
+  `scopes: [openid, profile, email]`. The configure dialog asks for
+  the tenant URL up front and substitutes it into both `issuer` and
+  (if explicit) `authorizationEndpoint` / `tokenEndpoint`. Org-level
+  MFA policy is honored automatically; `acr_values` step-up works via
+  `mfa.stepUpScopes`.
+- **Microsoft Entra ID** — OIDC. Same shape; `issuer:
+  https://login.microsoftonline.com/<tenantId>/v2.0`. Conditional
+  Access MFA fires inside the browser step.
+- **Google Workspace** — OAuth 2.0 / OIDC. Public PKCE client; user's
+  Workspace admin can enforce 2-step verification at the account
+  level.
+- **Auth0** — OIDC. Same shape as Okta. Rules can layer additional
+  MFA challenges; declare them in `mfa.factors` for clarity.
+- **GitHub / GitLab** — OAuth 2.0 (no OIDC). For GitHub Apps, prefer
+  device-flow on machines without a browser. 2FA is account-level at
+  the provider; galley never sees the second factor.
 
 ## Manifest examples
 
@@ -254,7 +327,10 @@ Highlights:
   requires explicit confirmation.
 - **API keys** for cloud plugins live in the OS keychain. The slot
   config persists a keychain reference, never the secret itself, so
-  exporting / syncing config is safe.
+  exporting / syncing config is safe. OAuth access + refresh tokens
+  follow the same rule — `authentication.oauth.tokenStorage:
+  keychain` (the default) routes them into the OS keychain alongside
+  static secrets, with the slot persisting only a reference.
 - **Probe traffic** for cloud plugins counts against quotas. The
   default probe interval (30 s) costs a few cents per month for most
   pay-per-call services; users can disable probes per-slot.
