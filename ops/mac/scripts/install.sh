@@ -126,11 +126,27 @@ swiftc "$GALLEY_DIR/apps/menubar/src/main.swift" -o "$BINARY" -framework Cocoa \
   2>&1 | sed 's/^/    /'
 ok "Compiled binary"
 
+# ── 5b. Generate AppIcon.icns from the SF Symbol book.closed.fill ────────────
+# Produces a cream-paper + vermilion-book icon so Finder / Launchpad /
+# Spotlight have something to render. The status-bar icon (set in
+# main.swift via SF Symbols) is unaffected.
+ICONSET="$GALLEY_DIR/ops/mac/menubar/AppIcon.iconset"
+ICNS="$GALLEY_DIR/ops/mac/menubar/AppIcon.icns"
+ICONGEN="$GALLEY_DIR/apps/menubar/build/gen-icon.swift"
+echo "  Generating AppIcon.icns…"
+rm -rf "$ICONSET" "$ICNS"
+swift "$ICONGEN" "$ICONSET" 2>&1 | sed 's/^/    /'
+iconutil -c icns "$ICONSET" -o "$ICNS" 2>&1 | sed 's/^/    /'
+[[ -f "$ICNS" ]] || err "iconutil failed — AppIcon.icns not produced"
+ok "Generated $ICNS"
+
 # Build .app bundle
 APP_BUILD="$GALLEY_DIR/ops/mac/menubar/Galley.app"
 rm -rf "$APP_BUILD"
 mkdir -p "$APP_BUILD/Contents/MacOS"
+mkdir -p "$APP_BUILD/Contents/Resources"
 cp "$BINARY" "$APP_BUILD/Contents/MacOS/Galley"
+cp "$ICNS"   "$APP_BUILD/Contents/Resources/AppIcon.icns"
 
 cat > "$APP_BUILD/Contents/Info.plist" <<XML
 <?xml version="1.0" encoding="UTF-8"?>
@@ -142,6 +158,7 @@ cat > "$APP_BUILD/Contents/Info.plist" <<XML
     <key>CFBundleIdentifier</key>     <string>com.galley.reader.menubar</string>
     <key>CFBundleName</key>           <string>Galley</string>
     <key>CFBundleVersion</key>        <string>1.0</string>
+    <key>CFBundleIconFile</key>       <string>AppIcon</string>
     <key>LSUIElement</key>            <true/>
     <key>NSPrincipalClass</key>       <string>NSApplication</string>
     <key>NSHighResolutionCapable</key><true/>
