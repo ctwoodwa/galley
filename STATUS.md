@@ -18,7 +18,12 @@ built on Sunfish architecture principles. The editorial vertical of
 the Sunfish-pattern accelerator family — sibling to Anchor (admin /
 dashboard) and Bridge (multi-tenant SaaS shell). See
 `docs/architecture/galley-as-sunfish-accelerator.md` for the
-positioning + relationship to Sunfish kernel packages.
+positioning + relationship to Sunfish kernel packages, and
+`docs/architecture/galley-platform-spec.md` for the full
+twelve-capability scope (prose, story bible, script, EPUB/audiobook,
+graphic novel, storyboard, animatic, visual style, scene graph,
+voice, output, integration) with per-area local-first contracts and
+opt-in cloud slots.
 
 Galley grows by **tool family** — each family targets one editorial
 medium with the same internal pattern:

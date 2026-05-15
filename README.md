@@ -2,6 +2,8 @@
 
 **A local-first, self-hosted editorial production platform** — built on Sunfish architecture principles for book publishing workflows. Authoring, prose analysis, audio production, image generation, and ePub / audiobook assembly all run on the user's own machine, with optional routing to user-controlled remote compute when a GPU is needed. No third-party SaaS dependencies for core functionality.
 
+See [`docs/architecture/galley-platform-spec.md`](docs/architecture/galley-platform-spec.md) for the full twelve-capability scope (prose & world editor, story bible, script/dialogue, EPUB/audiobook, graphic novel layout, storyboard/keyframes, animatic/timing, visual style/NPR, scene graph, voice & interaction, output/render, integration & API). Each capability is local-first by default with explicit per-slot opt-in cloud plugins.
+
 Talks to a local Express server for book content and an optional GPU server (user-deployed) for inference. The device is the truth; the network is an optimization.
 
 Galley grows by tool family — each addressing one editorial medium with the same internal pattern. See [`prose/`](prose/) for the first family (prose analysis: literary-device detection, anti-AI-tell catching, continuity validation). Future families: `speech/` (TTS/STT-driven editing), `comics/`, `video/`.
