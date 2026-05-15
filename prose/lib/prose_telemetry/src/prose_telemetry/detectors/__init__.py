@@ -39,3 +39,4 @@ from prose_telemetry.detectors import chain  # noqa: F401  Phase 8 batch 2b
 from prose_telemetry.detectors import pivot_inference  # noqa: F401  Phase 8 batch 3
 from prose_telemetry.detectors import density_style  # noqa: F401  Phase 8 batch 4
 from prose_telemetry.detectors import grammar_mechanics  # noqa: F401  Phase 8 batch 5
+from prose_telemetry.detectors import structural  # noqa: F401  Phase 8 batch 6

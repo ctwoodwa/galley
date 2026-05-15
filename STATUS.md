@@ -25,7 +25,7 @@ medium with the same internal pattern:
 
 | Family | Status |
 |---|---|
-| `prose/` | Phase 0–6 + 6.5 + 6.6 complete; Phase 8 in progress (batches 0/1/2a/2b/3 done — 18 handcount detectors retired total). `prose init` CLI scaffolds book.editorial.yaml for new books. 54 detectors in `dispatch.run_registry`; `verdict.rollup_registry` emits red/yellow/green from preset-scaled thresholds. 252 tests green. See `prose/ROADMAP.md`. |
+| `prose/` | Phase 0–6 + 6.5 + 6.6 + 8 complete. All 42 handcount stdlib detectors migrated to galley/prose registry (batches 0/1/2a/2b/3/4/5/6). `prose init` CLI scaffolds book.editorial.yaml for new books. 78 detectors in `dispatch.run_registry`; `verdict.rollup_registry` emits red/yellow/green from preset-scaled thresholds. 285 tests green. See `prose/ROADMAP.md`. |
 | `speech/` | Reserved. TTS/STT-driven editing. |
 | `comics/` | Reserved. |
 | `video/` | Reserved. |
