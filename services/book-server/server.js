@@ -6,6 +6,14 @@ import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { randomBytes } from 'crypto'
 
+// Production-graph (B.1) — sidecar object model under <bookRoot>/.galley/.
+// See docs/architecture/galley-production-graph.md for the data shapes
+// and crash-safety contracts.
+import { scaffoldProduction } from './lib/production-graph/scaffold.js'
+import { readGraph } from './lib/production-graph/read.js'
+import { rebuildIndex } from './lib/production-graph/index-builder.js'
+import { galleyDir } from './lib/production-graph/io.js'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const LIBRARY_PATH = path.join(__dirname, '../../integrations/library.json')
@@ -1064,6 +1072,84 @@ function chapterListResponse(data) {
     }
   })
 }
+
+// ── Book-scoped: production graph (B.1 — scaffold + read-only) ───────────────
+// The production graph is the asset/task/approval/review/job object model
+// landed under <bookRoot>/.galley/. See docs/architecture/galley-production-
+// graph.md for the data shapes, ID scheme, crash-safety markers, and the
+// index lifecycle. B.1 scope is auto-scaffold on first open + read-only API
+// over the assembled graph.
+
+/**
+ * POST /api/books/:bookId/graph/scaffold
+ *
+ * Idempotent. Re-entrant: a scaffold interrupted by crash leaves the
+ * `_scaffold.lock` marker; the next call recovers via the marker pair
+ * protocol described in the spec.
+ */
+app.post('/api/books/:bookId/graph/scaffold', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  try {
+    const result = scaffoldProduction({
+      bookRoot:  data.book.bookRoot,
+      bookId:    data.book.id,
+      bookTitle: data.book.title,
+      chapters:  data.chapters,
+    })
+    res.json(result)
+  } catch (e) {
+    res.status(500).json({ error: `Scaffold failed: ${e.message}` })
+  }
+})
+
+/**
+ * GET /api/books/:bookId/graph
+ *
+ * Returns the production graph for this book. If the graph has not
+ * yet been scaffolded, scaffolds it first (lazy on read). The
+ * response shape stays stable across phases — B.2+ kinds appear as
+ * empty arrays until they're populated.
+ */
+app.get('/api/books/:bookId/graph', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  try {
+    // Idempotent scaffold — no-op once `_scaffold.complete` is present.
+    scaffoldProduction({
+      bookRoot:  data.book.bookRoot,
+      bookId:    data.book.id,
+      bookTitle: data.book.title,
+      chapters:  data.chapters,
+    })
+    const graph = readGraph(data.book.bookRoot)
+    res.json(graph)
+  } catch (e) {
+    res.status(500).json({ error: `Graph read failed: ${e.message}` })
+  }
+})
+
+/**
+ * DELETE /api/books/:bookId/graph/index
+ *
+ * Explicit index flush. Drops `_index/` and forces a full rebuild on
+ * the next read. Useful for the test harness and for debugging an
+ * apparently-stale index.
+ */
+app.delete('/api/books/:bookId/graph/index', (req, res) => {
+  const data = getBook(req.params.bookId)
+  if (!data) return res.status(404).json({ error: 'Book not found' })
+  try {
+    const indexDir = path.join(galleyDir(data.book.bookRoot), '_index')
+    if (fs.existsSync(indexDir)) {
+      fs.rmSync(indexDir, { recursive: true, force: true })
+    }
+    rebuildIndex(data.book.bookRoot)
+    res.status(204).end()
+  } catch (e) {
+    res.status(500).json({ error: `Index flush failed: ${e.message}` })
+  }
+})
 
 // ── Book-scoped: editorial profile sidecar ────────────────────────────────────
 // Read/write the galley UI editorial overlay at <bookRoot>/.galley/editorial.json.
