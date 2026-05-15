@@ -303,3 +303,134 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ─── Drill-down (per-detector findings) ─────────────────────────────── */
+
+.telemetry-metric {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.telemetry-metric:hover {
+  background: hsl(var(--secondary));
+}
+
+.telemetry-metric-expanded {
+  padding: 0.5rem 0.75rem 0.6rem;
+  border-bottom: 1px solid hsl(var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.telemetry-finding-excerpt {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  font-family: var(--font-serif);
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.telemetry-finding-excerpt:hover {
+  border-color: hsl(var(--ring));
+  background: hsl(var(--background));
+}
+
+.telemetry-finding-excerpt-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.telemetry-finding-excerpt-meta {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.telemetry-finding-empty {
+  font-style: italic;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  padding: 0.4rem 0.5rem;
+}
+
+/* Preset switcher in header */
+
+.telemetry-preset-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-right: 0.4rem;
+  padding: 0.15rem;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.telemetry-preset-btn {
+  background: transparent;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.45rem;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.telemetry-preset-btn:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+}
+
+.telemetry-preset-btn.active {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.telemetry-preset-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Scroll-to-text flash highlight ──────────────────────────────────
+ * Selectors are NOT nested under .telemetry-panel because the <mark>
+ * is injected into the chapter DOM. Classes live with the telemetry
+ * styles because the panel owns the click that triggers them. */
+
+.galley-scroll-flash {
+  background: hsl(var(--primary) / 0.18);
+  color: inherit;
+  padding: 0 0.15em;
+  border-radius: 3px;
+  animation: galley-scroll-flash 2.5s ease-out;
+}
+
+.galley-scroll-flash-blocker {
+  background: hsl(var(--destructive) / 0.25);
+}
+
+.galley-scroll-flash-warning {
+  background: hsl(38 92% 50% / 0.30);
+}
+
+@keyframes galley-scroll-flash {
+  0%   { background-color: hsl(var(--primary) / 0.55); }
+  100% { background-color: hsl(var(--primary) / 0.18); }
+}

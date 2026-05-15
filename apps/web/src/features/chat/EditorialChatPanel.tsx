@@ -8,6 +8,10 @@ import {
   useEditorialChat,
   type ChatTurn,
 } from '@/api/editorialChat'
+import {
+  useChapterMeasurement,
+  type MeasurePresetOverride,
+} from '@/api/chapterMeasurement'
 import { buildLLMClient, LLMNotConfiguredError } from './llmClientFromConfig'
 
 const SYSTEM_PROMPT =
@@ -75,6 +79,23 @@ export function EditorialChatPanel({
     const text = draft.trim()
     if (!text || sending) return
     setErr(null)
+
+    // /measure [gentle|standard|strict] — runs the prose-telemetry
+    // pipeline for the current chapter and appends a summary turn.
+    // Doesn't touch the LLM, so it works without an llm slot
+    // configured (useful for skim-then-chat workflows).
+    const slash = parseSlashCommand(text)
+    if (slash?.command === 'measure') {
+      setDraft('')
+      appendTurn(bookId, chapterId, { role: 'user', content: text })
+      await runMeasureCommand({
+        bookId,
+        chapterId,
+        presetOverride: slash.preset,
+        appendTurn,
+      })
+      return
+    }
 
     let client
     try {
@@ -253,4 +274,110 @@ export function EditorialChatPanel({
       </form>
     </aside>
   )
+}
+
+// ─── Slash commands ────────────────────────────────────────────────
+
+type ParsedSlash =
+  | { command: 'measure'; preset?: MeasurePresetOverride }
+  | null
+
+function parseSlashCommand(text: string): ParsedSlash {
+  if (!text.startsWith('/')) return null
+  const parts = text.slice(1).trim().split(/\s+/)
+  const cmd = parts[0]?.toLowerCase()
+  if (cmd === 'measure') {
+    const arg = parts[1]?.toLowerCase()
+    if (arg === 'gentle' || arg === 'standard' || arg === 'strict') {
+      return { command: 'measure', preset: arg }
+    }
+    return { command: 'measure' }
+  }
+  return null
+}
+
+/**
+ * Run prose-telemetry for the current chapter and append a Markdown
+ * summary as an assistant turn. Reuses the shared
+ * `useChapterMeasurement` store so the telemetry panel sees the same
+ * result (the panel reads from the same cache entry).
+ */
+async function runMeasureCommand(args: {
+  bookId: string
+  chapterId: string
+  presetOverride?: MeasurePresetOverride
+  appendTurn: (
+    bookId: string,
+    chapterId: string,
+    turn: { role: 'assistant'; content: string; streaming?: boolean; error?: string },
+  ) => string
+}) {
+  const { bookId, chapterId, presetOverride, appendTurn } = args
+  const placeholderId = appendTurn(bookId, chapterId, {
+    role: 'assistant',
+    content: 'Running prose-telemetry…',
+    streaming: true,
+  })
+  const measure = useChapterMeasurement.getState().measure
+  const entry = await measure(
+    bookId,
+    chapterId,
+    presetOverride ? { presetOverride } : undefined,
+  )
+  const reg = entry.result?.registry_pipeline
+  const patchTurn = useEditorialChat.getState().patchTurn
+
+  if (entry.error || !reg) {
+    patchTurn(bookId, chapterId, placeholderId, {
+      content: entry.error
+        ? `**Measurement failed:** ${entry.error}`
+        : 'No registry result returned. Try again or check the prose-telemetry venv.',
+      streaming: false,
+      error: entry.error ?? undefined,
+    })
+    return
+  }
+
+  patchTurn(bookId, chapterId, placeholderId, {
+    content: formatMeasureSummary(reg),
+    streaming: false,
+  })
+}
+
+function formatMeasureSummary(reg: {
+  preset?: string
+  word_count: number
+  metrics: { device: string; raw_count: number; count_per_1k_tokens: number }[]
+  verdict: { verdict: string; blockers: string[]; warnings: string[] }
+}): string {
+  const verdict = reg.verdict?.verdict?.toUpperCase() ?? '—'
+  const blockers = reg.verdict?.blockers ?? []
+  const warnings = reg.verdict?.warnings ?? []
+  const firing = (reg.metrics ?? []).filter((m) => m.raw_count > 0)
+  const top = [...firing]
+    .sort((a, b) => b.raw_count - a.raw_count)
+    .slice(0, 5)
+
+  const lines: string[] = []
+  lines.push(`**Verdict: ${verdict}** · ${reg.word_count.toLocaleString()} words · preset \`${reg.preset ?? 'standard'}\``)
+  lines.push(`${blockers.length} blocker${blockers.length === 1 ? '' : 's'}, ${warnings.length} warning${warnings.length === 1 ? '' : 's'}, ${firing.length} firing detector${firing.length === 1 ? '' : 's'}.`)
+
+  if (blockers.length > 0) {
+    lines.push('')
+    lines.push('**Blockers**')
+    for (const b of blockers.slice(0, 5)) lines.push(`- ${b}`)
+  }
+  if (warnings.length > 0) {
+    lines.push('')
+    lines.push('**Warnings**')
+    for (const w of warnings.slice(0, 5)) lines.push(`- ${w}`)
+  }
+  if (top.length > 0) {
+    lines.push('')
+    lines.push('**Top firing detectors**')
+    for (const m of top) {
+      lines.push(`- \`${m.device}\` — ${m.raw_count} (${m.count_per_1k_tokens}/1k)`)
+    }
+  }
+  return lines.join('\n')
 }

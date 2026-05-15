@@ -10,6 +10,11 @@ import { templateToRenderConfig } from '@/lib/voice-templates'
 import { useApiConfig } from '@/api/config'
 import { playStaleChime, isChimeEnabled, setChimeEnabled } from '@/lib/chime'
 import { useDictation } from '@/hooks/useDictation'
+import {
+  SCROLL_TO_TEXT_EVENT,
+  findTextRange,
+  scrollRangeIntoView,
+} from './scrollToText'
 
 function stripFrontmatter(md) {
   return md.replace(/^---\n[\s\S]*?\n---\n?/, '')
@@ -352,6 +357,26 @@ export default function ChapterView({
     }
     chimedChunksRef.current = remaining
   }, [staleChunkIds])
+
+  // ── Telemetry / chat bridge ─────────────────────────────────────────────
+  // Listen for `galley:scroll-to-text` and scroll the chapter container
+  // to the matching range. The telemetry panel emits these when the user
+  // clicks a finding; the chat panel will too once Phase 2's slash
+  // commands land. The listener uses the existing `chapterViewRef` (see
+  // declaration further down) — searches inside the chapter root only
+  // so the event doesn't accidentally jump to text in side panels.
+  const chapterRootForScrollRef = useRef(null)
+  useEffect(() => {
+    function onScrollToText(e) {
+      const root = chapterRootForScrollRef.current ?? document.body
+      const detail = e.detail || {}
+      if (!detail.text) return
+      const range = findTextRange(root, detail.text)
+      if (range) scrollRangeIntoView(range, detail.severity ?? 'info')
+    }
+    window.addEventListener(SCROLL_TO_TEXT_EVENT, onScrollToText)
+    return () => window.removeEventListener(SCROLL_TO_TEXT_EVENT, onScrollToText)
+  }, [])
 
   // ── Chapter-level (overall) note form ───────────────────────────────────
   const [showNoteForm, setShowNoteForm] = useState(false)
@@ -1233,7 +1258,13 @@ export default function ChapterView({
   const html = loading ? '' : marked.parse(stripFrontmatter(content))
 
   return (
-    <div className="chapter-view" ref={chapterViewRef}>
+    <div
+      className="chapter-view"
+      ref={(el) => {
+        chapterViewRef.current = el
+        chapterRootForScrollRef.current = el
+      }}
+    >
       <div className="chapter-header">
         <div className="chapter-meta">
           <span className="chapter-volume">{chapter.volume === 'vol-1' ? 'Volume 1' : 'Volume 2'}</span>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   X,
   RotateCcw,
@@ -7,14 +7,22 @@ import {
   AlertOctagon,
   CheckCircle,
   Activity,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 
 import {
   useChapterMeasurement,
+  type RegistryFinding,
   type RegistryMetric,
   type RegistryPipeline,
 } from '@/api/chapterMeasurement'
 import { useTelemetryPrefs } from '@/api/telemetryPrefs'
+import { emitScrollToText } from '../reader/scrollToText'
+
+type Preset = 'gentle' | 'standard' | 'strict'
+
+const PRESETS: Preset[] = ['gentle', 'standard', 'strict']
 
 export interface ChapterTelemetryPanelProps {
   bookId: string
@@ -25,15 +33,15 @@ export interface ChapterTelemetryPanelProps {
 /**
  * Left-docked telemetry panel for the active chapter.
  *
- * Toggled by ⌘M / Ctrl+M (handled by `useTelemetryKeybind`). On open,
- * triggers a fresh measurement if no cached result exists for the
- * current chapter; otherwise renders the cached result and shows the
- * "Last measured: …" timestamp. The Refresh button always forces a
- * new call.
- *
- * Sits on the LEFT so it can coexist with the chat panel on the right
- * without overlap. Both default to hidden; user opens whichever
- * surfaces they want.
+ * Phase 1 surfaced verdict + counts + Top firing detectors. Phase 2:
+ *   - Header preset switcher (gentle / standard / strict) reruns
+ *     measurement with `?preset=…` so the user can see verdict drift
+ *     without leaving the panel.
+ *   - Top firing detectors are click-to-expand — each shows its
+ *     individual finding excerpts.
+ *   - Each finding excerpt is click-to-scroll: emits
+ *     `galley:scroll-to-text` (consumed by ChapterView) which scrolls
+ *     the prose and flashes the matched text briefly.
  */
 export function ChapterTelemetryPanel({
   bookId,
@@ -47,13 +55,15 @@ export function ChapterTelemetryPanel({
   const entry = useChapterMeasurement((s) => s.results[bookId]?.[chapterId])
   const measure = useChapterMeasurement((s) => s.measure)
 
-  // Auto-measure on first open of a chapter that has no cached result.
+  const [presetOverride, setPresetOverride] = useState<Preset | null>(null)
+  const [expandedDetector, setExpandedDetector] = useState<string | null>(null)
+
   useEffect(() => {
     if (!enabled || !visible) return
     if (!entry?.result && !entry?.loading) {
-      void measure(bookId, chapterId)
+      void measure(bookId, chapterId, presetOverride ? { presetOverride } : undefined)
     }
-  }, [enabled, visible, bookId, chapterId, entry?.result, entry?.loading, measure])
+  }, [enabled, visible, bookId, chapterId, entry?.result, entry?.loading, measure, presetOverride])
 
   if (!enabled || !visible) return null
 
@@ -62,6 +72,16 @@ export function ChapterTelemetryPanel({
   const blockers = reg?.verdict?.blockers ?? []
   const warnings = reg?.verdict?.warnings ?? []
   const lastMeasured = entry?.lastFetchedAt
+  const activePreset = (presetOverride ?? reg?.preset ?? 'standard') as Preset
+
+  const handleRefresh = (preset?: Preset) => {
+    void measure(bookId, chapterId, preset ? { presetOverride: preset } : undefined)
+  }
+
+  const handlePresetChange = (preset: Preset) => {
+    setPresetOverride(preset)
+    handleRefresh(preset)
+  }
 
   return (
     <aside className="telemetry-panel" data-telemetry-panel>
@@ -73,10 +93,15 @@ export function ChapterTelemetryPanel({
           ) : null}
         </div>
         <div className="telemetry-panel-actions">
+          <PresetSwitcher
+            value={activePreset}
+            disabled={entry?.loading ?? false}
+            onChange={handlePresetChange}
+          />
           <button
             type="button"
             className="telemetry-icon-btn"
-            onClick={() => measure(bookId, chapterId)}
+            onClick={() => handleRefresh(presetOverride ?? undefined)}
             disabled={entry?.loading}
             title="Refresh measurement"
           >
@@ -105,7 +130,16 @@ export function ChapterTelemetryPanel({
         ) : !entry?.result || !reg ? (
           <EmptyState />
         ) : (
-          <ResultView reg={reg} verdict={verdict ?? 'green'} blockers={blockers} warnings={warnings} />
+          <ResultView
+            reg={reg}
+            verdict={verdict ?? 'green'}
+            blockers={blockers}
+            warnings={warnings}
+            expandedDetector={expandedDetector}
+            onToggleDetector={(name) =>
+              setExpandedDetector((prev) => (prev === name ? null : name))
+            }
+          />
         )}
       </div>
 
@@ -115,6 +149,39 @@ export function ChapterTelemetryPanel({
         </footer>
       ) : null}
     </aside>
+  )
+}
+
+function PresetSwitcher({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: Preset
+  disabled: boolean
+  onChange: (p: Preset) => void
+}) {
+  return (
+    <div
+      className="telemetry-preset-switcher"
+      role="radiogroup"
+      aria-label="Prose-review preset override"
+    >
+      {PRESETS.map((p) => (
+        <button
+          key={p}
+          type="button"
+          role="radio"
+          aria-checked={value === p}
+          className={'telemetry-preset-btn' + (value === p ? ' active' : '')}
+          disabled={disabled}
+          onClick={() => onChange(p)}
+          title={`Re-measure with ${p} preset`}
+        >
+          {p}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -153,23 +220,36 @@ function ResultView({
   verdict,
   blockers,
   warnings,
+  expandedDetector,
+  onToggleDetector,
 }: {
   reg: RegistryPipeline
   verdict: string
   blockers: string[]
   warnings: string[]
+  expandedDetector: string | null
+  onToggleDetector: (name: string) => void
 }) {
   const wordCount = reg.word_count ?? 0
   const detectorCount = reg.metrics?.length ?? 0
   const findingCount = reg.findings?.length ?? 0
 
-  // Top firing detectors (raw_count > 0), sorted descending. Limited
-  // to the top 12 so the panel doesn't sprawl on chapters with very
-  // long detector tails.
   const topFirers = useMemo<RegistryMetric[]>(() => {
     const firing = (reg.metrics ?? []).filter((m) => m.raw_count > 0)
     return [...firing].sort((a, b) => b.raw_count - a.raw_count).slice(0, 12)
   }, [reg.metrics])
+
+  // Group findings by `type` once; drill-down reads from this map.
+  const findingsByType = useMemo<Map<string, RegistryFinding[]>>(() => {
+    const map = new Map<string, RegistryFinding[]>()
+    for (const f of reg.findings ?? []) {
+      const key = String(f.type)
+      const list = map.get(key) ?? []
+      list.push(f)
+      map.set(key, list)
+    }
+    return map
+  }, [reg.findings])
 
   return (
     <>
@@ -240,20 +320,122 @@ function ResultView({
         <section className="telemetry-section">
           <h3 className="telemetry-section-title">Top firing detectors</h3>
           <ul className="telemetry-metric-list">
-            {topFirers.map((m) => (
-              <li key={m.device} className="telemetry-metric">
-                <span className="telemetry-metric-name">{m.device}</span>
-                <span className="telemetry-metric-count">
-                  {m.raw_count.toLocaleString()}{' '}
-                  <span className="telemetry-metric-per1k">/ {m.count_per_1k_tokens}/1k</span>
-                </span>
-              </li>
-            ))}
+            {topFirers.map((m) => {
+              const expanded = expandedDetector === m.device
+              const findings = findingsByType.get(m.device) ?? []
+              return (
+                <DetectorRow
+                  key={m.device}
+                  metric={m}
+                  expanded={expanded}
+                  findings={findings}
+                  onToggle={() => onToggleDetector(m.device)}
+                />
+              )
+            })}
           </ul>
         </section>
       ) : null}
     </>
   )
+}
+
+function DetectorRow({
+  metric,
+  expanded,
+  findings,
+  onToggle,
+}: {
+  metric: RegistryMetric
+  expanded: boolean
+  findings: RegistryFinding[]
+  onToggle: () => void
+}) {
+  return (
+    <>
+      <li
+        className="telemetry-metric"
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+      >
+        <span className="telemetry-metric-name">
+          {expanded ? (
+            <ChevronDown size={11} style={{ display: 'inline', marginRight: 4 }} aria-hidden="true" />
+          ) : (
+            <ChevronRight size={11} style={{ display: 'inline', marginRight: 4 }} aria-hidden="true" />
+          )}
+          {metric.device}
+        </span>
+        <span className="telemetry-metric-count">
+          {metric.raw_count.toLocaleString()}{' '}
+          <span className="telemetry-metric-per1k">/ {metric.count_per_1k_tokens}/1k</span>
+        </span>
+      </li>
+      {expanded ? (
+        <li className="telemetry-metric-expanded">
+          {findings.length === 0 ? (
+            <div className="telemetry-finding-empty">
+              No per-finding text emitted for this detector (it reports density, not spans).
+            </div>
+          ) : (
+            findings.slice(0, 20).map((f, i) => <FindingExcerpt key={i} finding={f} />)
+          )}
+          {findings.length > 20 ? (
+            <div className="telemetry-finding-empty">
+              … {findings.length - 20} more not shown. Use the prose-telemetry CLI for full output.
+            </div>
+          ) : null}
+        </li>
+      ) : null}
+    </>
+  )
+}
+
+function FindingExcerpt({ finding }: { finding: RegistryFinding }) {
+  // Each detector emits a different "best" snippet — `text`,
+  // `extra.sentence`, `extra.match`, `extra.paragraph_excerpt`, etc.
+  // Pick the first that looks like prose.
+  const snippet = pickSnippet(finding)
+  if (!snippet) return null
+
+  return (
+    <button
+      type="button"
+      className="telemetry-finding-excerpt"
+      onClick={() => emitScrollToText({ text: snippet, severity: 'info' })}
+      title="Scroll to this in the chapter"
+    >
+      <span className="telemetry-finding-excerpt-text">
+        {snippet.length > 240 ? snippet.slice(0, 240) + '…' : snippet}
+      </span>
+    </button>
+  )
+}
+
+function pickSnippet(finding: RegistryFinding): string | null {
+  const candidates: unknown[] = [
+    finding.text,
+    (finding as Record<string, unknown>).sentence,
+    (finding as Record<string, unknown>).match,
+    (finding as Record<string, unknown>).paragraph_excerpt,
+  ]
+  const extra = (finding as Record<string, unknown>).extra
+  if (extra && typeof extra === 'object') {
+    for (const key of ['text', 'sentence', 'match', 'paragraph_excerpt', 'first_sentence', 'second_sentence']) {
+      candidates.push((extra as Record<string, unknown>)[key])
+    }
+  }
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim().length >= 4) return c.trim()
+  }
+  return null
 }
 
 function VerdictIcon({ verdict }: { verdict: string }) {

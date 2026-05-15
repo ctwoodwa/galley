@@ -69,13 +69,25 @@ export interface MeasurementCacheEntry {
   lastFetchedAt: string | null
 }
 
+export type MeasurePresetOverride = 'gentle' | 'standard' | 'strict'
+
+export interface MeasureOptions {
+  skipStdlib?: boolean
+  skipSpacy?: boolean
+  skipRegistry?: boolean
+  /** Override the book's `prosePreset` for this run only — does not
+   *  mutate the BookProfile on disk. The book-server applies it via
+   *  the `--preset-override` flag on prose-telemetry CLI. */
+  presetOverride?: MeasurePresetOverride
+}
+
 interface ChapterMeasurementState {
   results: Record<string, Record<string, MeasurementCacheEntry>>
   /** Run the pipeline on `chapterId` and cache the result. Returns the entry. */
   measure: (
     bookId: string,
     chapterId: string,
-    opts?: { skipStdlib?: boolean; skipSpacy?: boolean; skipRegistry?: boolean },
+    opts?: MeasureOptions,
   ) => Promise<MeasurementCacheEntry>
   /** Clear cached results for a chapter (forces next measure call). */
   invalidate: (bookId: string, chapterId: string) => void
@@ -112,6 +124,7 @@ export const useChapterMeasurement = create<ChapterMeasurementState>()((set, get
     if (opts?.skipStdlib) qs.set('no_stdlib', '1')
     if (opts?.skipSpacy) qs.set('no_spacy', '1')
     if (opts?.skipRegistry) qs.set('no_registry', '1')
+    if (opts?.presetOverride) qs.set('preset', opts.presetOverride)
 
     try {
       const res = await fetch(

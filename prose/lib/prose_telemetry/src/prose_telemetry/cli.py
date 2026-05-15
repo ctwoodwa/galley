@@ -151,8 +151,15 @@ def cmd_measure(args) -> None:
     # Per-book editorial profile — book.editorial.yaml overlaid by the
     # galley UI sidecar at <book_repo>/.galley/editorial.json. Drives
     # the registry pass; handcount + spaCy ignore it for now.
-    from prose_telemetry._common.types import BookProfile
+    from prose_telemetry._common.types import BookProfile, apply_editorial_overlay
     profile = BookProfile.from_book_root(book_repo)
+
+    # --preset-override is a one-shot scaling override (used by galley's
+    # in-panel preset switcher). It overlays after the sidecar so the
+    # user's panel choice wins for this run, without persisting.
+    preset_override = getattr(args, "preset_override", None)
+    if preset_override:
+        profile = apply_editorial_overlay(profile, {"prosePreset": preset_override})
 
     stdlib_result: dict = {}
     spacy_result: dict = {}
@@ -315,6 +322,10 @@ def main() -> None:
     m.add_argument("--stdout", action="store_true",
                    help="Write the full metrics JSON to stdout (suppresses "
                         "summary text). For AI-agent / scripting use.")
+    m.add_argument("--preset-override", choices=["gentle", "standard", "strict"],
+                   default=None,
+                   help="One-shot override for the book's prosePreset. Applied "
+                        "via editorial overlay; does not mutate book.editorial.yaml.")
 
     init = sub.add_parser("init", help="Scaffold book.editorial.yaml for a new book")
     init.add_argument("book_root", type=Path,

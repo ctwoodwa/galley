@@ -1221,6 +1221,21 @@ app.post('/api/books/:bookId/measure', (req, res) => {
   if (req.query.no_spacy === '1'  || req.body?.no_spacy)  flags.push('--no-spacy')
   if (req.query.no_registry === '1' || req.body?.no_registry) flags.push('--no-registry')
 
+  // Optional preset override — telemetry panel passes one of
+  // 'gentle' | 'standard' | 'strict' when the user clicks the
+  // header preset switcher. Validated here so a malformed query
+  // can't reach the spawn call.
+  const presetRaw = req.query.preset || req.body?.preset
+  if (presetRaw) {
+    const allowed = new Set(['gentle', 'standard', 'strict'])
+    if (!allowed.has(String(presetRaw))) {
+      return res.status(400).json({
+        error: `Invalid preset "${presetRaw}". Expected one of: gentle, standard, strict.`,
+      })
+    }
+    flags.push('--preset-override', String(presetRaw))
+  }
+
   const pythonBin = process.env.GALLEY_PROSE_PYTHON ||
     path.join(__dirname, '..', '..', 'prose', 'lib', 'prose_telemetry', '.venv', 'bin', 'python')
 
