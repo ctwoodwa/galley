@@ -25,7 +25,7 @@ medium with the same internal pattern:
 
 | Family | Status |
 |---|---|
-| `prose/` | Phase 0–6 + 6.5 + 6.6 complete; Phase 8 in progress (batch 0: voice / batch 1: classical rhetoric done — 7 handcount detectors retired in favor of registry equivalents). 43 detectors in `dispatch.run_registry`; `verdict.rollup_registry` emits red/yellow/green from preset-scaled thresholds in the overlay-merged `BookProfile`. 213 tests green. See `prose/ROADMAP.md`. |
+| `prose/` | Phase 0–6 + 6.5 + 6.6 complete; Phase 8 in progress (batches 0 / 1 / 2a done — 11 handcount detectors retired total). 47 detectors in `dispatch.run_registry`; `verdict.rollup_registry` emits red/yellow/green from preset-scaled thresholds in the overlay-merged `BookProfile`. 225 tests green. See `prose/ROADMAP.md`. |
 | `speech/` | Reserved. TTS/STT-driven editing. |
 | `comics/` | Reserved. |
 | `video/` | Reserved. |
