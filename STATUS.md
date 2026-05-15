@@ -25,7 +25,7 @@ medium with the same internal pattern:
 
 | Family | Status |
 |---|---|
-| `prose/` | Phase 0–6 + 6.5 complete: 38 stdlib + 4 spaCy + 27 registry-based detectors now reachable from production via `dispatch.run_registry`. Editorial overlay (`.galley/editorial.json`) flows through `BookProfile.from_book_root` into the dispatch — settings UI changes are observable in `prose measure` output. 187 tests green. See `prose/ROADMAP.md`. |
+| `prose/` | Phase 0–6 + 6.5 + 6.6 complete: 38 stdlib + 4 spaCy + 27 registry-based detectors run from production via `dispatch.run_registry`; `verdict.rollup_registry` emits red/yellow/green per chapter based on the preset-scaled thresholds in the overlay-merged `BookProfile`. Editorial settings UI changes flow all the way through to the verdict. 196 tests green. See `prose/ROADMAP.md`. |
 | `speech/` | Reserved. TTS/STT-driven editing. |
 | `comics/` | Reserved. |
 | `video/` | Reserved. |

@@ -204,6 +204,8 @@ def cmd_measure(args) -> None:
     # current behaviour; tooling that wants the registry view reads
     # `registry_pipeline`.
     if registry_result is not None:
+        from prose_telemetry.verdict import rollup_registry
+        reg_verdict = rollup_registry(registry_result.metrics, profile)
         merged["registry_pipeline"] = {
             "book_id": profile.book_id,
             "preset": profile.extra.get("_prose_preset", "standard"),
@@ -212,6 +214,7 @@ def cmd_measure(args) -> None:
             "findings": registry_result.findings,
             "metrics": registry_result.metrics,
             "word_count": registry_result.word_count,
+            "verdict": reg_verdict.to_dict(),
         }
 
     # Determine output path.
@@ -243,8 +246,16 @@ def cmd_measure(args) -> None:
         print(f"  spaCy:     {pipeline.get('spacy_model')} ({pipeline.get('spacy_version')})")
     reg = merged.get("registry_pipeline")
     if reg:
+        rv = reg.get("verdict", {})
         print(f"  registry:  {len(reg['metrics'])} detectors, "
               f"{len(reg['findings'])} findings ({reg['preset']} preset)")
+        print(f"             verdict={rv.get('verdict', '?')}  "
+              f"blockers={len(rv.get('blockers', []))}  "
+              f"warnings={len(rv.get('warnings', []))}")
+        for b in rv.get("blockers", []):
+            print(f"               ✗ {b}")
+        for w in rv.get("warnings", []):
+            print(f"               ⚠ {w}")
     print()
     if roll.get("blockers"):
         print("BLOCKERS:")
