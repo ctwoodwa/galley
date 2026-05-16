@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CAPABILITIES, type CapabilityId, type ServiceConfig } from '@galley/api-client'
 import { useApiConfig } from '@/api/config'
 import {
@@ -6,6 +6,13 @@ import {
   type AuthCategory,
   type PluginManifest,
 } from '@/api/pluginRegistry'
+import {
+  beginOAuth,
+  getOAuthStatus,
+  onOAuthResult,
+  signOutOAuth,
+  type OAuthStatus,
+} from '@/api/oauth'
 import { SettingsSection } from '../SettingsSection'
 import { AdvancedDisclosure } from '../AdvancedDisclosure'
 import { EntryCard } from '../EntryCard'
@@ -333,9 +340,13 @@ function apiKeyHelperText(
 }
 
 /**
- * Phase 1 stub. The button click is wired in Phase 2 (Tauri-side OAuth
- * runtime). Today it surfaces the auth shape so users can verify the
- * manifest is correct and understand what the flow will do.
+ * Drives the OAuth flow declared in the plugin manifest. The Tauri
+ * runtime (`apps/desktop/src-tauri/src/oauth.rs`) opens the IdP in the
+ * system browser and waits for the loopback callback. We listen for
+ * `galley://oauth-result` to know when the flow finished.
+ *
+ * In a plain browser session (no Tauri shell), the button surfaces the
+ * "desktop app required" copy instead — the flow can't run there.
  */
 function OAuthAuthField({ manifest }: { manifest: PluginManifest }) {
   const oauth = manifest.authentication?.oauth
@@ -348,18 +359,94 @@ function OAuthAuthField({ manifest }: { manifest: PluginManifest }) {
         ? 'Client-credentials flow'
         : 'Authorization-code with PKCE'
 
+  const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+  const [status, setStatus] = useState<OAuthStatus>({
+    signedIn: false,
+    identity: null,
+    expiresAt: null,
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void getOAuthStatus(manifest.id).then((s) => {
+      if (!cancelled) setStatus(s)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [manifest.id])
+
+  useEffect(() => {
+    if (!inTauri) return
+    let unsubscribe: (() => void) | undefined
+    void onOAuthResult((payload) => {
+      if (payload.pluginId !== manifest.id) return
+      setBusy(false)
+      if (payload.ok) {
+        setError(null)
+        void getOAuthStatus(manifest.id).then(setStatus)
+      } else {
+        setError(payload.error ?? 'sign-in failed')
+      }
+    }).then((u) => {
+      unsubscribe = u
+    })
+    return () => {
+      unsubscribe?.()
+    }
+  }, [inTauri, manifest.id])
+
+  const handleSignIn = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await beginOAuth(manifest.id)
+    } catch (err) {
+      setBusy(false)
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const handleSignOut = async () => {
+    setBusy(true)
+    try {
+      await signOutOAuth(manifest.id)
+      setStatus({ signedIn: false, identity: null, expiresAt: null })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="gs-oauth-block">
-      <button
-        type="button"
-        className="gs-oauth-signin"
-        disabled
-        title="OAuth runtime ships in Phase 2 of the auth-taxonomy workstream."
-      >
-        Sign in with {providerLabel}
-      </button>
+      {status.signedIn ? (
+        <button
+          type="button"
+          className="gs-oauth-signin"
+          onClick={handleSignOut}
+          disabled={busy}
+        >
+          Sign out{status.identity ? ` (${status.identity})` : ''}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="gs-oauth-signin"
+          onClick={handleSignIn}
+          disabled={busy || !inTauri}
+          title={
+            inTauri
+              ? `Open ${providerLabel} sign-in in your browser`
+              : 'OAuth flows require the Galley desktop app.'
+          }
+        >
+          {busy ? 'Waiting for browser…' : `Sign in with ${providerLabel}`}
+        </button>
+      )}
       <p className="gs-field-helper" style={{ marginTop: '0.4rem' }}>
-        {flowLabel}. Token will land in the OS keychain (
+        {flowLabel}. Token lands in the OS keychain (
         {oauth?.tokenStorage ?? 'keychain'}).
         {oauth?.scopes?.length
           ? ` Scopes: ${oauth.scopes.join(', ')}.`
@@ -368,9 +455,16 @@ function OAuthAuthField({ manifest }: { manifest: PluginManifest }) {
           ? ` ${manifest.name} enforces 2FA at the provider; the IdP will challenge during sign-in.`
           : ''}
       </p>
-      <p className="gs-field-helper" style={{ marginTop: '0.2rem', opacity: 0.7 }}>
-        Sign-in is staged — the OAuth runtime ships in the next phase.
-      </p>
+      {!inTauri && (
+        <p className="gs-field-helper" style={{ marginTop: '0.2rem', opacity: 0.7 }}>
+          Open Galley in the desktop app to run the OAuth flow.
+        </p>
+      )}
+      {error && (
+        <p className="gs-field-helper" style={{ marginTop: '0.2rem', color: 'var(--destructive)' }}>
+          {error}
+        </p>
+      )}
     </div>
   )
 }

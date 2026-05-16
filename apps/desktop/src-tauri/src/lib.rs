@@ -1,6 +1,6 @@
 //! Galley desktop shell entry point.
 //!
-//! Wires three subsystems together:
+//! Wires four subsystems together:
 //!
 //!   - `tray`      — system tray / menu-bar icon + the menu users
 //!                   actually interact with (Open / Books / Tools /
@@ -12,10 +12,34 @@
 //!                   slot URLs (TTS, STT, image, music). These usually
 //!                   live on a separate tailnet host; the desktop
 //!                   shell can't control them, only observe.
+//!   - `oauth`     — authorization-code-pkce flow for cloud plugins
+//!                   declaring `authentication.type = oauth2`. Tokens
+//!                   land in the OS keychain.
 
+mod oauth;
+mod probes;
 mod services;
 mod tray;
-mod probes;
+
+use tauri::{AppHandle, Runtime};
+
+#[tauri::command]
+async fn oauth_begin<R: Runtime>(
+    app: AppHandle<R>,
+    plugin_id: String,
+) -> Result<oauth::BeginResult, String> {
+    oauth::begin(app, plugin_id).await
+}
+
+#[tauri::command]
+fn oauth_status(plugin_id: String) -> oauth::StatusResult {
+    oauth::status(&plugin_id)
+}
+
+#[tauri::command]
+async fn oauth_signout(plugin_id: String) -> Result<(), String> {
+    oauth::signout(&plugin_id).await
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,6 +47,11 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            oauth_begin,
+            oauth_status,
+            oauth_signout,
+        ])
         .setup(|app| {
             tray::create_tray(app.handle())?;
             services::start_supervision(app.handle().clone());
