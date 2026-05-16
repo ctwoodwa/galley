@@ -45,6 +45,9 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.13.24
         version: 3.13.24(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tauri-apps/api':
+        specifier: ^2.4.0
+        version: 2.11.0
       '@wavesurfer/react':
         specifier: ^1.0.12
         version: 1.0.12(react@19.2.6)(wavesurfer.js@7.12.6)
@@ -737,6 +740,9 @@ packages:
 
   '@tanstack/virtual-core@3.14.0':
     resolution: {integrity: sha512-JLANqGy/D6k4Ujmh8Tr25lGimuOXNiaVyXaCAZS0W+1390sADdGnyUdSWNIfd49gebtIxGMij4IktRVzrdr12Q==}
+
+  '@tauri-apps/api@2.11.0':
+    resolution: {integrity: sha512-7CinYODhky9lmO23xHnUFv0Xt43fbtWMyxZcLcRBlFkcgXKuEirBvHpmtJ89YMhyeGcq20Wuc47Fa4XjyniywA==}
 
   '@tauri-apps/cli-darwin-arm64@2.11.1':
     resolution: {integrity: sha512-6eEKMBXsQPCuM1EmvrjT2+aBuxWQuFdKdW8pzNuNQtpq45nEEpBlD5gr8pUeAyOU1DQKlkFaEc/MPBxb/Pfjtg==}
@@ -2711,6 +2717,8 @@ snapshots:
       react-dom: 19.2.6(react@19.2.6)
 
   '@tanstack/virtual-core@3.14.0': {}
+
+  '@tauri-apps/api@2.11.0': {}
 
   '@tauri-apps/cli-darwin-arm64@2.11.1':
     optional: true

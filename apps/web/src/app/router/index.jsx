@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import HomePage from '../../pages/home/HomePage.tsx'
 import AppLayout from '../layouts/AppLayout.jsx'
+import RootLayout from '../layouts/RootLayout.tsx'
 import ReadPage from '../../pages/read/ReadPage.jsx'
 import StudioLayout from '../../pages/studio/StudioLayout.jsx'
 import VoicesPage from '../../pages/studio/voices/VoicesPage.jsx'
@@ -38,52 +39,57 @@ const wrapSettings = (el) => <Suspense fallback={settingsFallback}>{el}</Suspens
 
 export const router = createBrowserRouter([
   {
-    path: '/',
-    element: <HomePage />,
-  },
-  {
-    path: '/read/:bookId',
-    element: <AppLayout />,
+    element: <RootLayout />,
     children: [
-      { index: true, element: <ReadPage /> },
-      // Review / Queue / Logs are now overlay drawers controlled from
-      // AppLayout state, not routes. They render on top of the chapter
-      // view so editing context stays visible.
       {
-        path: 'studio',
-        element: <StudioLayout />,
+        path: '/',
+        element: <HomePage />,
+      },
+      {
+        path: '/read/:bookId',
+        element: <AppLayout />,
         children: [
-          { index: true, element: <Navigate to="voices" replace /> },
-          { path: 'voices', element: <VoicesPage /> },
-          { path: 'stt-qc', element: <SttQcPage /> },
-          { path: 'cover-art', element: <CoverArtPage /> },
-          { path: 'music', element: <MusicPage /> },
+          { index: true, element: <ReadPage /> },
+          // Review / Queue / Logs are now overlay drawers controlled from
+          // AppLayout state, not routes. They render on top of the chapter
+          // view so editing context stays visible.
+          {
+            path: 'studio',
+            element: <StudioLayout />,
+            children: [
+              { index: true, element: <Navigate to="voices" replace /> },
+              { path: 'voices', element: <VoicesPage /> },
+              { path: 'stt-qc', element: <SttQcPage /> },
+              { path: 'cover-art', element: <CoverArtPage /> },
+              { path: 'music', element: <MusicPage /> },
+            ],
+          },
         ],
       },
+      {
+        // Top-level inference studio (raw API exploration; not chapter-aware).
+        // Distinct from /read/:bookId/studio/* which is editorial.
+        // Lazy-loaded — its bundle (panels + wavesurfer + dnd-kit + etc.) only
+        // downloads when the user navigates here.
+        path: '/inference',
+        element: wrap(<InferenceLayout />),
+        children: [
+          { index: true, element: <Navigate to="voices" replace /> },
+          { path: 'voices', element: wrap(<InferenceVoicesPage />) },
+          { path: 'stt', element: wrap(<InferenceSttPage />) },
+          { path: 'image', element: wrap(<InferenceImagePage />) },
+          { path: 'music', element: wrap(<InferenceMusicPage />) },
+        ],
+      },
+      {
+        // Task-first, progressively-disclosed settings shell. See
+        // docs/settings/ia.md. Reachable at /settings — no nav link yet
+        // while the IA is under review; the legacy SettingsDrawer (right-
+        // side drawer in the inference studio) continues to serve the
+        // existing production UI.
+        path: '/settings',
+        element: wrapSettings(<SettingsPageV2 />),
+      },
     ],
-  },
-  {
-    // Top-level inference studio (raw API exploration; not chapter-aware).
-    // Distinct from /read/:bookId/studio/* which is editorial.
-    // Lazy-loaded — its bundle (panels + wavesurfer + dnd-kit + etc.) only
-    // downloads when the user navigates here.
-    path: '/inference',
-    element: wrap(<InferenceLayout />),
-    children: [
-      { index: true, element: <Navigate to="voices" replace /> },
-      { path: 'voices', element: wrap(<InferenceVoicesPage />) },
-      { path: 'stt', element: wrap(<InferenceSttPage />) },
-      { path: 'image', element: wrap(<InferenceImagePage />) },
-      { path: 'music', element: wrap(<InferenceMusicPage />) },
-    ],
-  },
-  {
-    // Task-first, progressively-disclosed settings shell. See
-    // docs/settings/ia.md. Reachable at /settings — no nav link yet
-    // while the IA is under review; the legacy SettingsDrawer (right-
-    // side drawer in the inference studio) continues to serve the
-    // existing production UI.
-    path: '/settings',
-    element: wrapSettings(<SettingsPageV2 />),
   },
 ])
