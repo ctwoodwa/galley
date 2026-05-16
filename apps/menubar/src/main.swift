@@ -2,11 +2,13 @@ import Cocoa
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-let kPort    = 3080
-let kBase    = "http://localhost:\(kPort)"
-let kLabel   = "com.galley.reader"
-let kPlist   = "\(NSHomeDirectory())/Library/LaunchAgents/\(kLabel).plist"
-let kLogFile = "\(NSHomeDirectory())/Library/Logs/galley.log"
+let kPort           = 3080
+let kBase           = "http://localhost:\(kPort)"
+let kLabel          = "com.galley.reader"
+let kPlist          = "\(NSHomeDirectory())/Library/LaunchAgents/\(kLabel).plist"
+let kMenubarLabel   = "\(kLabel).menubar"
+let kMenubarPlist   = "\(NSHomeDirectory())/Library/LaunchAgents/\(kMenubarLabel).plist"
+let kLogFile        = "\(NSHomeDirectory())/Library/Logs/galley.log"
 
 // ── App delegate ──────────────────────────────────────────────────────────────
 
@@ -61,7 +63,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         add(menu, "View Log",         tag: 2,  sel: #selector(openLog))
         menu.addItem(.separator())
-        add(menu, "Quit",             tag: 0,  sel: #selector(NSApp.terminate(_:)), key: "q")
+        add(menu, "Quit Galley",      tag: 0,  sel: #selector(quitGalley(_:)), key: "q")
         item.menu = menu
         syncMenu(running: false)
     }
@@ -112,6 +114,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sh("launchctl kickstart -k gui/\(getuid())/\(kLabel) 2>/dev/null; true")
         // Build takes ~5s; poll after 10s to reflect the new running state
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { self.poll() }
+    }
+
+    @objc private func quitGalley(_ sender: Any?) {
+        // Stop the book-server LaunchAgent first so it doesn't keep serving
+        // requests after the menubar disappears. bootout deactivates the
+        // agent for the remainder of this user session — login auto-start
+        // is unaffected because the plist on disk is untouched.
+        sh("launchctl bootout gui/\(getuid())/\(kLabel) 2>/dev/null" +
+           " || launchctl unload '\(kPlist)' 2>/dev/null; true")
+        // Stop this menubar's own LaunchAgent so it doesn't immediately
+        // respawn us before NSApp.terminate completes. (KeepAlive is set to
+        // { Crashed: true } so a clean exit wouldn't respawn anyway, but
+        // bootout is the unambiguous "stay down" signal.)
+        sh("launchctl bootout gui/\(getuid())/\(kMenubarLabel) 2>/dev/null" +
+           " || launchctl unload '\(kMenubarPlist)' 2>/dev/null; true")
+        NSApp.terminate(sender)
     }
 
     @objc private func openLog() {
