@@ -137,13 +137,13 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 
 .chapter-title {
   flex: 1;
+  min-width: 0;
   font-size: 13px;
   color: var(--text);
   line-height: 1.35;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .audio-dot {
